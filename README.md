@@ -1,12 +1,34 @@
-IPSW Tool
+# DragonXmodz1569 IPSW Tool
 
-What Tool Currently Does:
-Extracts and Decrypts IPSW Files
+A simple Python tool for working with Apple IPSW firmware files.
 
-To Do List:
-Add GUI Support - Currently Being Built
-Add Stable and Beta IOS Download
-Support ALL Apple Product - Currently only IOS
-Support ALL IOS from 1 to latest
-Add Ollama AI
-Add AI Learning / Memory Saving / Techniques
+## Current Features
+- Extract IPSW files
+- Decrypt firmware images
+- Works with iOS 26 IPSWs (tested with 23D127 builds)
+
+## In Progress
+- GUI support (PySide6 interface being built)
+- Download iOS firmware automatically (stable + beta)
+- Better IPSW mounting & APFS extraction tools
+
+## Planned Features
+- Support all Apple devices (iPhone, iPad, iPod, etc.)
+- Support iOS versions from 1 → latest
+- Integration with Ollama AI for file analysis
+- AI learning / memory features for automation
+- Support Multi Platform
+
+## Requirements
+- macOS (Built on Tahoe 26.3)
+- Python 3.14+
+- Tools used:
+  - `hdiutil`
+  - `7z`
+  - `IPSW`
+  
+
+
+## Example Usage
+```bash
+python main.py
