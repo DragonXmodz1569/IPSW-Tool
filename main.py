@@ -1,7 +1,4 @@
-from Modules.IPSW_Control import IPSW
+from Modules.GUI import Main_Menu
 
-IPSW = IPSW()
+Main_Menu = Main_Menu
 
-IPSW.IPSW_Files_Locate()
-
-IPSW.IPSW_Files_Extract()
