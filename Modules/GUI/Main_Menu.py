@@ -21,6 +21,9 @@ def ident_key(ident: str):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.Selected_IOS = None
+        self.Selected_IOS_Model = None
+
         IOS_Func = IOS_Data_Grabber.iPhone()
         Models, before_IOS = IOS_Func.Main_Function()
         ios_versions = sorted({v for d in before_IOS for v in d.get("versions", [])})
@@ -37,10 +40,17 @@ class MainWindow(QMainWindow):
 
         IOS_List = QListWidget()
         IOS_List.addItems(sorted_versions)
+        IOS_List.itemClicked.connect(self.ios_selected)
 
         IOS_Models = QListWidget()
         for item in nameidentifier:
             IOS_Models.addItem(f'{item["name"]} | {item["identifier"]}')
+        IOS_Models.itemClicked.connect(self.ios_Model_selected)
+
+        # Top Right Side
+        Selected_Button = QPushButton("Select")
+        Selected_Button.setFixedSize(70, 30)
+        Selected_Button.clicked.connect(lambda: print(f'Selected IOS: {self.Selected_IOS} and Model: {self.Selected_IOS_Model}'))
 
         GridLayout = QGridLayout(container)
         # make 4 “panels”
@@ -53,7 +63,9 @@ class MainWindow(QMainWindow):
 
         #Top Right Panel - Button Options
         tr = QWidget();
-        tr.setLayout(QVBoxLayout())
+        tr_layout = QHBoxLayout(tr)
+        tr_layout.setContentsMargins(5, 5, 5, 5)
+        tr_layout.addWidget(Selected_Button, alignment=Qt.AlignTop | Qt.AlignLeft)
 
         # Bottom Left Panel - Console
         bl = QWidget();
@@ -72,6 +84,12 @@ class MainWindow(QMainWindow):
         GridLayout.setRowStretch(1, 1)  # bottom half
         GridLayout.setColumnStretch(0, 1)  # left half
         GridLayout.setColumnStretch(1, 1)  # right half
+
+    def ios_selected(self, item):
+        self.Selected_IOS = item.text()
+
+    def ios_Model_selected(self, item):
+        self.Selected_IOS_Model = item.text()
 
 app = QApplication()
 window = MainWindow()
