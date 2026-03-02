@@ -25,10 +25,11 @@ class MainWindow(QMainWindow):
         self.Selected_IOS_Model = None
 
         IOS_Func = IOS_Data_Grabber.iPhone()
-        Models, before_IOS = IOS_Func.Main_Function()
-        ios_versions = sorted({v for d in before_IOS for v in d.get("versions", [])})
-        sorted_versions = sorted(ios_versions, key=ios_ver_key, reverse=True)
-
+        Models, IOS, before_iPhone_IOS = IOS_Func.Main_Function()
+        IOS.sort(
+            key=lambda v: [int(x) for x in v.split(".")],
+            reverse=True
+        )
         sorted_devices = sorted(Models, key=lambda d: ident_key(d["identifier"]), reverse=True)
         nameidentifier = [{"name": d["name"], "identifier": d["identifier"]} for d in sorted_devices]
 
@@ -39,7 +40,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
         IOS_List = QListWidget()
-        IOS_List.addItems(sorted_versions)
+        IOS_List.addItems(IOS)
         IOS_List.itemClicked.connect(self.ios_selected)
 
         IOS_Models = QListWidget()

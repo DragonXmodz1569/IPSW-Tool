@@ -18,6 +18,8 @@ A simple Python tool for working with Apple IPSW firmware files.
 - Integration with Ollama AI for file analysis
 - AI learning / memory features for automation
 - Support Multi Platform
+- Offline Mode (Some Functions Support it however if dont will be a work in progress)
+- Multiple API for more AI with custom prompts changing ability (so can jailbreak it)
 
 ## Requirements
 - macOS (Built on Tahoe 26.3)
