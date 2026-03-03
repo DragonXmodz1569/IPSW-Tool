@@ -3,16 +3,14 @@
 A simple Python tool for working with Apple IPSW firmware files.
 
 ## Current Features
-- Extract IPSW files
-- Decrypt firmware images
-- Works with iOS 26 IPSWs (tested with 23D127 builds)
+- GUI Support
 - Console
 - Offline Mode
 
 ## In Progress
 - GUI support (PySide6 interface being built)
 - Download iOS firmware automatically (stable + beta)
-- Better IPSW mounting & APFS extraction tools
+- Update IPSW_Control.py to work with gui
 
 ## Planned Features
 - Support all Apple devices (iPhone, iPad, iPod, etc.)
