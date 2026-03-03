@@ -21,14 +21,12 @@ A simple Python tool for working with Apple IPSW firmware files.
 - Multiple API for more AI with custom prompts changing ability (so can jailbreak it)
 
 ## Requirements
-- macOS (Built on Tahoe 26.3)
+- macOS (Built on Macbook Pro 2024 M4 with 24GB RAM running Tahoe 26.3 as of post)
 - Python 3.14+
 - Tools used:
   - `hdiutil`
   - `7z`
   - `IPSW`
-  
-
 
 ## Example Usage
 ```bash
