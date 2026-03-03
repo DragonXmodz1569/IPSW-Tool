@@ -14,12 +14,14 @@ def Test_Wifi():
         q.put(False)
 
 class iPhone:
-    def __init__(self):
+    def __init__(self, console_print=None):
+        self.console_print = console_print or (lambda msg: None)
         self.iPhone_IOS = []
         self.iPhone_Models = []
         self.iPad_Models = []
         self.Mac_Models = []
 
+        self.Offline_IOS_Index = []
         self.Offline_iPhone_IOS = []
         self.Offline_iPhone_Models = []
         self.Offline_iPad_Models = []
@@ -27,12 +29,13 @@ class iPhone:
 
         threading.Thread(target=Test_Wifi).start()
         self.Wifi_Status = q.get()
+        if not self.Wifi_Status:
+            self.console_print("[Warning] Error With Wifi Running in Offline Mode")
 
         self.Offline_iPhone_Models_Files = False
         self.Offline_iPad_Models_Files = False
         self.Offline_Mac_Models_Files = False
         self.Offline_iPhone_IOS_Files = False
-
         if os.path.exists("Modules/DataBases"):
             for file in os.listdir("Modules/DataBases"):
                 if file == "iPhone_Models.json":
@@ -51,7 +54,6 @@ class iPhone:
                         offMac = json.load(file)
                     self.Offline_Mac_Models.extend(offMac)
 
-
                 if file == "iPhone_IOS.json":
                     self.Offline_iPhone_IOS_Files = True
                     with open("Modules/DataBases/iPhone_IOS.json", 'r') as file:
@@ -60,10 +62,11 @@ class iPhone:
 
         self.IPSW_API = "https://api.ipsw.me/v4"
 
-    def Grab_iPhone_Models(self, Wifi_Check=True):
+    def Grab_Apple_Models(self, Wifi_Check=True):
         if (self.Wifi_Status and Wifi_Check):
-            iPhone_URL = self.IPSW_API + "/devices"
-            ALL_Apple = requests.get(iPhone_URL)
+            self.console_print("[Apple Models] Initiating API Models Request")
+            Apple_URL = self.IPSW_API + "/devices"
+            ALL_Apple = requests.get(Apple_URL)
             for Product in ALL_Apple.json():
                 if Product["identifier"].startswith("iPhone"):
                     self.iPhone_Models.append(Product)
@@ -72,21 +75,39 @@ class iPhone:
                 if Product["identifier"].startswith("Mac"):
                     self.Mac_Models.append(Product)
             if len(self.iPhone_Models) > 0:
+                self.console_print("----------------------------------------------------")
+                self.console_print("[Apple Models] Saving iPhone Models for Offline Mode")
                 if os.path.exists("Modules/DataBases/iPhone_Models.json"):
+                    self.console_print("[Apple Models] Error iPhone_Models.json already exists")
+                    self.console_print("[Apple Models] Replacing File")
                     os.remove("Modules/DataBases/iPhone_Models.json")
                 with open("Modules/DataBases/iPhone_Models.json", 'w') as file:
                     json.dump(self.iPhone_Models, file, indent=4)
+                self.console_print("[Apple Models] Saved iPhone_Models.json Completed")
+
             if len(self.iPad_Models) > 0:
+                self.console_print("----------------------------------------------------")
+                self.console_print("[Apple Models] Saving iPad Models for Offline Mode")
                 if os.path.exists("Modules/DataBases/iPad_Models.json"):
+                    self.console_print("[Apple Models] Error iPad_Models.json already exists")
+                    self.console_print("[Apple Models] Replacing File")
                     os.remove("Modules/DataBases/iPad_Models.json")
                 with open("Modules/DataBases/iPad_Models.json", 'w') as file:
                     json.dump(self.iPad_Models, file, indent=4)
+                self.console_print("[Apple Models] Saved iPad_Models.json Completed")
+
             if len(self.Mac_Models) > 0:
+                self.console_print("----------------------------------------------------")
+                self.console_print("[Apple Models] Saving Mac Models for Offline Mode")
                 if os.path.exists("Modules/DataBases/Mac_Models.json"):
+                    self.console_print("[Apple Models] Error Mac_Models.json already exists")
+                    self.console_print("[Apple Models] Replacing File")
                     os.remove("Modules/DataBases/Mac_Models.json")
                 with open("Modules/DataBases/Mac_Models.json", 'w') as file:
                     json.dump(self.Mac_Models, file, indent=4)
-        elif not (self.Wifi_Status or Wifi_Check):
+                self.console_print("[Apple Models] Saved Mac_Models.json Completed")
+            self.console_print("----------------------------------------------------")
+        elif (not self.Wifi_Status or not Wifi_Check):
             return
         else:
             raise Exception("Error")
@@ -108,16 +129,22 @@ class iPhone:
                         "identifier": self.iPhone_Models[i]["identifier"],
                         "versions": temp_iPhone_IOS_Index
                     })
-                for device in self.iPhone_IOS_Index:  # 1) go through each device
-                    for v in device["versions"]:  # 2) go through each version in that device
-                        if v not in self.IOS_Index:  # 3) if you don't already have it...
+                for device in self.iPhone_IOS_Index:
+                    for v in device["versions"]:
+                        if v not in self.IOS_Index:
                             self.IOS_Index.append(v)
                 self.IOS_Index.sort(key=lambda v: [int(x) for x in v.split(".")])
+            elif (not self.Wifi_Status) and (not Wifi_Check):
+                for device in self.Offline_iPhone_IOS:
+                    for v in device["versions"]:
+                        if v not in self.Offline_IOS_Index:
+                            self.Offline_IOS_Index.append(v)
+                self.Offline_IOS_Index.sort(key=lambda v: [int(x) for x in v.split(".")])
 
     def Main_Function(self):
-        self.Grab_iPhone_Models()
+        self.Grab_Apple_Models()
         self.Stable_IOS()
         if len(self.iPhone_Models) > 0:
             return self.iPhone_Models, self.IOS_Index, self.iPhone_IOS_Index
         else:
-            return self.Offline_iPhone_Models, self.IOS_Index, self.iPhone_IOS_Index #Need Work on IOS and iphone IOS index offline
+            return self.Offline_iPhone_Models, self.Offline_IOS_Index, self.Offline_iPhone_IOS

@@ -6,6 +6,8 @@ A simple Python tool for working with Apple IPSW firmware files.
 - Extract IPSW files
 - Decrypt firmware images
 - Works with iOS 26 IPSWs (tested with 23D127 builds)
+- Console
+- Offline Mode
 
 ## In Progress
 - GUI support (PySide6 interface being built)
@@ -18,7 +20,6 @@ A simple Python tool for working with Apple IPSW firmware files.
 - Integration with Ollama AI for file analysis
 - AI learning / memory features for automation
 - Support Multi Platform
-- Offline Mode (Some Functions Support it however if dont will be a work in progress)
 - Multiple API for more AI with custom prompts changing ability (so can jailbreak it)
 
 ## Requirements
