@@ -25,11 +25,10 @@ class MainWindow(QMainWindow):
         container = QWidget()
         self.setCentralWidget(container)
 
-        IOS_List = QListWidget()
-        IOS_List.itemClicked.connect(self.ios_selected)
+        self.IOS_List = QListWidget()
+        self.IOS_List.itemClicked.connect(self.ios_selected)
 
         IOS_Models = QListWidget()
-
 
         # Top Right Side
         Selected_Button = QPushButton("Select")
@@ -48,8 +47,10 @@ class MainWindow(QMainWindow):
         #Top Left Panel - IOS and Model Selecting
         tl = QWidget();
         tl_layout = QHBoxLayout(tl)
-        tl_layout.addWidget(IOS_List)
         tl_layout.addWidget(IOS_Models)
+        tl_layout.addWidget(self.IOS_List)
+        IOS_Models.currentItemChanged.connect(self.Model_From_List)
+
 
         #Top Right Panel - Button Options
         tr = QWidget();
@@ -73,13 +74,12 @@ class MainWindow(QMainWindow):
         br.setLayout(QVBoxLayout())
 
         IOS_Func = IOS_Data_Grabber.iPhone(self.console_print)
-        Models, IOS, before_iPhone_IOS = IOS_Func.Main_Function()
+        Models, IOS, self.before_iPhone_IOS = IOS_Func.Main_Function()
         IOS.sort(key=lambda v: [int(x) for x in v.split(".")],reverse=True)
 
         sorted_devices = sorted(Models, key=lambda d: ident_key(d["identifier"]), reverse=True)
         nameidentifier = [{"name": d["name"], "identifier": d["identifier"]} for d in sorted_devices]
 
-        IOS_List.addItems(IOS)
         for item in nameidentifier:
             IOS_Models.addItem(f'{item["name"]} | {item["identifier"]}')
         IOS_Models.itemClicked.connect(self.ios_Model_selected)
@@ -103,6 +103,17 @@ class MainWindow(QMainWindow):
     def console_print(self, text):
         self.console.appendPlainText(text)
 
+    def Model_From_List(self, current):
+        model = current.text()
+        model_name, model_ident = model.split(" | ")
+        for ios in self.before_iPhone_IOS:
+            if ios.get("identifier", "") == model_ident:
+                self.IOS_List.clear()
+                seen = []
+                for items in ios.get('versions'):
+                    if items not in seen:
+                        seen.append(items)
+                        self.IOS_List.addItem(items)
 app = QApplication()
 window = MainWindow()
 window.show()
