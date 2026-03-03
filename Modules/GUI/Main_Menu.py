@@ -14,7 +14,6 @@ def ident_key(ident: str):
 class Worker(QObject):
     log = Signal(str)
 
-
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -37,9 +36,10 @@ class MainWindow(QMainWindow):
         Selected_Button.setFixedSize(70, 30)
         Selected_Button.clicked.connect(lambda: print(f'Selected IOS: {self.Selected_IOS} and Model: {self.Selected_IOS_Model}'))
 
-        Test_Button = QPushButton("Test")
-        Test_Button.setFixedSize(70, 30)
-        Test_Button.clicked.connect(lambda: (IOS_Func.Main_Function()))
+        Refresh_Button = QPushButton("⟳")
+        Refresh_Button.setFixedSize(40, 40)
+        Refresh_Button.setStyleSheet("""QPushButton { border-radius: 20px; background-color: #2c2c2c; color: white; font-size: 18px;} QPushButton:hover {background-color: #3a3a3a;}""")
+        Refresh_Button.clicked.connect(lambda: (IOS_Func.Main_Function()))
 
 
         GridLayout = QGridLayout(container)
@@ -56,7 +56,7 @@ class MainWindow(QMainWindow):
         tr_layout = QHBoxLayout(tr)
         tr_layout.setContentsMargins(5, 5, 5, 5)
         tr_layout.addWidget(Selected_Button, alignment=Qt.AlignTop | Qt.AlignLeft)
-        tr_layout.addWidget(Test_Button, alignment=Qt.AlignTop | Qt.AlignLeft)
+        tr_layout.addWidget(Refresh_Button, alignment=Qt.AlignTop | Qt.AlignRight)
 
         # Bottom Left Panel - Console
         bl = QWidget();

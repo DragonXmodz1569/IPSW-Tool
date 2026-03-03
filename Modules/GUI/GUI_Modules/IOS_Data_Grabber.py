@@ -143,12 +143,14 @@ class iPhone:
                         if v not in self.IOS_Index:
                             self.IOS_Index.append(v)
                 self.IOS_Index.sort(key=lambda v: [int(x) for x in v.split(".")])
-            elif (not self.Wifi_Status) and (not Wifi_Check):
-                for device in self.Offline_iPhone_IOS:
-                    for v in device["versions"]:
-                        if v not in self.Offline_IOS_Index:
-                            self.Offline_IOS_Index.append(v)
-                self.Offline_IOS_Index.sort(key=lambda v: [int(x) for x in v.split(".")])
+        elif (not self.Wifi_Status) or (not Wifi_Check):
+            for device in self.Offline_iPhone_IOS:
+                for v in device["versions"]:
+                    if v not in self.Offline_IOS_Index:
+                        self.Offline_IOS_Index.append(v)
+            self.Offline_IOS_Index.sort(key=lambda v: [int(x) for x in v.split(".")])
+        else:
+            raise Exception("Error")
 
     def Main_Function(self):
         self.Grab_Apple_Models()
