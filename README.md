@@ -23,6 +23,7 @@ A simple Python tool for working with Apple IPSW firmware files.
 ## Requirements
 - macOS (Built on Macbook Pro 2024 M4 with 24GB RAM running Tahoe 26.3 as of post)
 - Python 3.14+
+- Wifi (Mainly for first run and Download IPSW Files)
 - Tools used:
   - `hdiutil`
   - `7z`
