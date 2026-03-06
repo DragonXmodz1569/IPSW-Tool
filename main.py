@@ -1,4 +1,4 @@
 
-from Modules.GUI.GUI_Modules.IOS_Data_Grabber import iPhone
+from Modules.GUI import Main_Menu
 
-iPhone
+menu = Main_Menu
