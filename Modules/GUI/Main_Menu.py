@@ -1,9 +1,10 @@
 # main_gui.py
 import re
-import time
+import threading
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QListWidget, QPlainTextEdit, QGroupBox
 from PySide6.QtCore import Qt, QObject, Signal
 from Modules.GUI.GUI_Modules import IOS_Data_Grabber
+from Modules.API_and_WebScrapers.IPSW_API import Stable
 
 def ident_key(ident: str):
     m = re.match(r"^iPhone(\d+),(\d+)$", ident)
@@ -11,7 +12,7 @@ def ident_key(ident: str):
         return (-1, -1)  # shove unknowns to the end
     return (int(m.group(1)), int(m.group(2)))
 
-class Worker(QObject):
+class ConsoleSignals(QObject):
     log = Signal(str)
 
 class MainWindow(QMainWindow):
@@ -33,7 +34,7 @@ class MainWindow(QMainWindow):
         # Top Right Side
         Selected_Button = QPushButton("Select")
         Selected_Button.setFixedSize(70, 30)
-        Selected_Button.clicked.connect(lambda: print(f'Selected IOS: {self.Selected_IOS} and Model: {self.Selected_IOS_Model}'))
+        Selected_Button.clicked.connect(lambda: self.Download_IPSW(self.Selected_IOS, self.Selected_IOS_Model))
 
         Refresh_Button = QPushButton("⟳")
         Refresh_Button.setFixedSize(40, 40)
@@ -68,6 +69,8 @@ class MainWindow(QMainWindow):
         self.console.setReadOnly(True)
         bl_layout.addWidget(Console_title)
         bl_layout.addWidget(self.console)
+        self.signals = ConsoleSignals()
+        self.signals.log.connect(self.console.appendPlainText)
 
         #Bottom Right Panel
         br = QWidget();
@@ -98,10 +101,16 @@ class MainWindow(QMainWindow):
         self.Selected_IOS = item.text()
 
     def ios_Model_selected(self, item):
-        self.Selected_IOS_Model = item.text()
+        _, model_ident = item.text().split(" | ")
+        self.Selected_IOS_Model = model_ident
 
     def console_print(self, text):
-        self.console.appendPlainText(text)
+        self.signals.log.emit(text)
+
+    def Download_IPSW(self, version, identifer):
+        self.console_print(f'Starting download of {version} IPSW for {identifer}')
+        stable = Stable(console_print=self.console_print)
+        threading.Thread(target=stable.IPSW_Download, args=(identifer, version), daemon=True).start()
 
     def Model_From_List(self, current):
         model = current.text()
@@ -114,6 +123,7 @@ class MainWindow(QMainWindow):
                     if items not in seen:
                         seen.append(items)
                         self.IOS_List.addItem(items)
+
 app = QApplication()
 window = MainWindow()
 window.show()

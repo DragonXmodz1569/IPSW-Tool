@@ -8,9 +8,9 @@ q = queue.Queue()
 
 def Test_Wifi():
     try:
-        requests.get("https://api.ipsw.me", timeout=2)
+        requests.get("https://api.ipsw.me/v4/devices", timeout=(2, 5))
         q.put(True)
-    except requests.ConnectionError:
+    except requests.exceptions.RequestException:
         q.put(False)
 
 class iPhone:
