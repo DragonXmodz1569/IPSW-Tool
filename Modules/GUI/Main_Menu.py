@@ -1,6 +1,8 @@
 # main_gui.py
 import re
 import threading
+
+from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QListWidget, QPlainTextEdit, QGroupBox
 from PySide6.QtCore import Qt, QObject, Signal
 from Modules.GUI.GUI_Modules import IOS_Data_Grabber
@@ -32,9 +34,13 @@ class MainWindow(QMainWindow):
         IOS_Models = QListWidget()
 
         # Top Right Side
-        Selected_Button = QPushButton("Select")
-        Selected_Button.setFixedSize(70, 30)
-        Selected_Button.clicked.connect(lambda: self.Download_IPSW(self.Selected_IOS, self.Selected_IOS_Model))
+        Download_Button = QPushButton("Download")
+        Download_Button.setFixedSize(70, 30)
+        Download_Button.clicked.connect(lambda: self.Download_IPSW(self.Selected_IOS, self.Selected_IOS_Model))
+
+        IPSW_Extract_Button = QPushButton("Extract")
+        IPSW_Extract_Button.setFixedSize(70, 30)
+        IPSW_Extract_Button.clicked.connect(lambda: print('test'))
 
         Refresh_Button = QPushButton("⟳")
         Refresh_Button.setFixedSize(40, 40)
@@ -52,13 +58,19 @@ class MainWindow(QMainWindow):
         tl_layout.addWidget(self.IOS_List)
         IOS_Models.currentItemChanged.connect(self.Model_From_List)
 
-
         #Top Right Panel - Button Options
         tr = QWidget();
+        button_row = QHBoxLayout()
+        button_row.setSpacing(8)  # small gap
+        button_row.addWidget(Download_Button)
+        button_row.addWidget(IPSW_Extract_Button)
+
         tr_layout = QHBoxLayout(tr)
         tr_layout.setContentsMargins(5, 5, 5, 5)
-        tr_layout.addWidget(Selected_Button, alignment=Qt.AlignTop | Qt.AlignLeft)
-        tr_layout.addWidget(Refresh_Button, alignment=Qt.AlignTop | Qt.AlignRight)
+        tr_layout.setAlignment(Qt.AlignTop)
+        tr_layout.addLayout(button_row)
+        tr_layout.addStretch()
+        tr_layout.addWidget(Refresh_Button, alignment=Qt.AlignTop)
 
         # Bottom Left Panel - Console
         bl = QWidget();
@@ -71,6 +83,7 @@ class MainWindow(QMainWindow):
         bl_layout.addWidget(self.console)
         self.signals = ConsoleSignals()
         self.signals.log.connect(self.console.appendPlainText)
+        self.console.moveCursor(QTextCursor.End)
 
         #Bottom Right Panel
         br = QWidget();

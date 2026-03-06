@@ -45,24 +45,24 @@ class Stable:
         if IPSW_File is None:
             self.console_print("IPSW File not found please select a model and version again")
             return
-
-        IPSW_Path = self.IPSW_Directory.joinpath(IPSW_Name)
+        os.makedirs(f'{self.IPSW_Directory}/{identifer}', exist_ok=True)
+        IPSW_Path = self.IPSW_Directory.joinpath(identifer, IPSW_Name)
         headers = {}
         if IPSW_Path.exists():
             current_size = os.path.getsize(IPSW_Path)
             if current_size >= Target_Size:
-                self.console_print("IPSW already downloaded")
+                self.console_print(f"[{identifer}] IPSW already downloaded")
                 return
 
             if current_size < Target_Size:
                 self.console_print("Continuing the download")
-                print("continuing of download")
+                print(f"[{identifer}] continuing {version} download")
                 binary_mode = 'ab'
                 headers["Range"] = f"bytes={current_size}-"
 
         IPSW_Data = requests.get(IPSW_File, headers=headers, stream=True)
         if "Range" in headers and IPSW_Data.status_code != 206:
-            self.console_print("Server ignored resume request")
+            self.console_print(f"[{identifer}] Server ignored resume request")
             return
         downloaded = 0
         last_print = 0
@@ -78,11 +78,11 @@ class Stable:
 
                     if percent >= last_print + 5:
                         last_print = percent
-                        self.console_print(f"{percent}% downloaded")
+                        self.console_print(f"[{identifer}] {percent}% downloaded")
 
         if self.console_print:
-            self.console_print(f"Downloaded IPSW firmware {IPSW_Name}")
-            self.console_print(f"Verifying Hash of {IPSW_Name}")
+            self.console_print(f"[{identifer}] Downloaded IPSW firmware {IPSW_Name}")
+            self.console_print(f"[{identifer}] Verifying Hash of {IPSW_Name}")
         with (open(IPSW_Path, "rb")) as file:
             while chuck := file.read(1024 * 1024):
                 md5.update(chuck)
@@ -96,7 +96,7 @@ class Stable:
             SHA256_Match = True
 
         if self.console_print:
-            self.console_print(f"MD5 Match: {MD5_Match}")
-            self.console_print(f"SHA1 Match: {SHA1_Match}")
-            self.console_print(f"SHA256 Match: {SHA256_Match}")
+            self.console_print(f"[{identifer}] MD5 Match: {MD5_Match}")
+            self.console_print(f"[{identifer}] SHA1 Match: {SHA1_Match}")
+            self.console_print(f"[{identifer}] SHA256 Match: {SHA256_Match}")
         return
