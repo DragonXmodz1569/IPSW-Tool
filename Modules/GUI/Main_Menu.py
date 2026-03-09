@@ -149,10 +149,17 @@ class MainWindow(QMainWindow):
             threading.Thread(target=stable.IPSW_Download, args=(identifer, version[x]), daemon=True).start()
 
     def Extract_IPSW(self, version, identifer):
-        self.console_print(f'Starting Extraction of {version} IPSW for {identifer}')
-        Extract = IPSW_Control(console_print=self.console_print)
-        for x in range(len(version)):
-            threading.Thread(target=Extract.Unzip_Decrypt_Files, args=(identifer, version[x]), daemon=True).start()
+        if QApplication.keyboardModifiers() == Qt.ShiftModifier:
+            self.console_print(f'Starting Extraction of All Local IPSW for {identifer}')
+            Extract = IPSW_Control(console_print=self.console_print)
+            Extract.IPSW_Files_Locate(identifer)
+            threading.Thread(target=Extract.Unzip_Decrypt_Files, args=(identifer,), daemon=True).start()
+        else:
+            self.console_print(f'Starting Extraction of {version} IPSW for {identifer}')
+            Extract = IPSW_Control(console_print=self.console_print)
+            for x in range(len(version)):
+                threading.Thread(target=Extract.Unzip_Decrypt_Files, args=(identifer, version[x]), daemon=True).start()
+
 
 
 app = QApplication()

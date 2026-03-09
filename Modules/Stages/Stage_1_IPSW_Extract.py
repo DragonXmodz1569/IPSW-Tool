@@ -116,5 +116,5 @@ class IPSW_Control:
         failed = self.wait_process()
         if len(failed) > 0:
             print(f'Stage 1 have {len(failed)} failed')
-
+        self.console_print(f'[{iPhone_Model}][Stage 1] IPSW UnzipPart 1/10 Finished for {iPhone_Version}')
 
