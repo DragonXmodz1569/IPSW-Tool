@@ -51,12 +51,12 @@ class Stable:
         if IPSW_Path.exists():
             current_size = os.path.getsize(IPSW_Path)
             if current_size >= Target_Size:
-                self.console_print(f"[{identifer}] IPSW already downloaded")
+                self.console_print(f"[{identifer}|{version}] IPSW already downloaded")
                 return
 
             if current_size < Target_Size:
                 self.console_print("Continuing the download")
-                print(f"[{identifer}] continuing {version} download")
+                print(f"[{identifer}|{version}] continuing {version} download")
                 binary_mode = 'ab'
                 headers["Range"] = f"bytes={current_size}-"
 
@@ -78,16 +78,18 @@ class Stable:
 
                     if percent >= last_print + 5:
                         last_print = percent
-                        self.console_print(f"[{identifer}] {percent}% downloaded")
+                        self.console_print(f"[{identifer}|{version}] {percent}% downloaded")
 
         if self.console_print:
-            self.console_print(f"[{identifer}] Downloaded IPSW firmware {IPSW_Name}")
-            self.console_print(f"[{identifer}] Verifying Hash of {IPSW_Name}")
+            self.console_print(f"[{identifer}|{version}] Downloaded IPSW firmware {IPSW_Name}")
+            self.console_print(f"[{identifer}|{version}] Verifying Hash of {IPSW_Name}")
+
         with (open(IPSW_Path, "rb")) as file:
             while chuck := file.read(1024 * 1024):
                 md5.update(chuck)
                 sha1.update(chuck)
                 sha256.update(chuck)
+
         if md5.hexdigest() == Target_md5:
             MD5_Match = True
         if sha1.hexdigest() == Target_sha1:
@@ -96,7 +98,7 @@ class Stable:
             SHA256_Match = True
 
         if self.console_print:
-            self.console_print(f"[{identifer}] MD5 Match: {MD5_Match}")
-            self.console_print(f"[{identifer}] SHA1 Match: {SHA1_Match}")
-            self.console_print(f"[{identifer}] SHA256 Match: {SHA256_Match}")
+            self.console_print(f"[{identifer}|{version}] MD5 Match: {MD5_Match}")
+            self.console_print(f"[{identifer}|{version}] SHA1 Match: {SHA1_Match}")
+            self.console_print(f"[{identifer}|{version}] SHA256 Match: {SHA256_Match}")
         return

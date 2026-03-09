@@ -3,10 +3,12 @@ import re
 import threading
 
 from PySide6.QtGui import QTextCursor
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QListWidget, QPlainTextEdit, QGroupBox
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QListWidget, QPlainTextEdit, QGroupBox, QAbstractItemView
 from PySide6.QtCore import Qt, QObject, Signal
+
 from Modules.GUI.GUI_Modules import IOS_Data_Grabber
 from Modules.API_and_WebScrapers.IPSW_API import Stable
+from Modules.Stages.Stage_1_IPSW_Extract import IPSW_Control
 
 def ident_key(ident: str):
     m = re.match(r"^iPhone(\d+),(\d+)$", ident)
@@ -29,6 +31,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(container)
 
         self.IOS_List = QListWidget()
+        self.IOS_List.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.IOS_List.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.IOS_List.customContextMenuRequested.connect(self.unselect_item)
         self.IOS_List.itemClicked.connect(self.ios_selected)
 
         IOS_Models = QListWidget()
@@ -40,7 +45,7 @@ class MainWindow(QMainWindow):
 
         IPSW_Extract_Button = QPushButton("Extract")
         IPSW_Extract_Button.setFixedSize(70, 30)
-        IPSW_Extract_Button.clicked.connect(lambda: print('test'))
+        IPSW_Extract_Button.clicked.connect(lambda: self.Extract_IPSW(self.Selected_IOS, self.Selected_IOS_Model))
 
         Refresh_Button = QPushButton("⟳")
         Refresh_Button.setFixedSize(40, 40)
@@ -111,7 +116,7 @@ class MainWindow(QMainWindow):
         GridLayout.setColumnStretch(1, 1)  # right half
 
     def ios_selected(self, item):
-        self.Selected_IOS = item.text()
+        self.Selected_IOS = [i.text() for i in self.IOS_List.selectedItems()]
 
     def ios_Model_selected(self, item):
         _, model_ident = item.text().split(" | ")
@@ -119,11 +124,6 @@ class MainWindow(QMainWindow):
 
     def console_print(self, text):
         self.signals.log.emit(text)
-
-    def Download_IPSW(self, version, identifer):
-        self.console_print(f'Starting download of {version} IPSW for {identifer}')
-        stable = Stable(console_print=self.console_print)
-        threading.Thread(target=stable.IPSW_Download, args=(identifer, version), daemon=True).start()
 
     def Model_From_List(self, current):
         model = current.text()
@@ -136,6 +136,24 @@ class MainWindow(QMainWindow):
                     if items not in seen:
                         seen.append(items)
                         self.IOS_List.addItem(items)
+
+    def unselect_item(self, pos):
+        item = self.IOS_List.itemAt(pos)
+        if item:
+            item.setSelected(False)
+
+    def Download_IPSW(self, version, identifer):
+        self.console_print(f'Starting download of {version} IPSW for {identifer}')
+        stable = Stable(console_print=self.console_print)
+        for x in range(len(version)):
+            threading.Thread(target=stable.IPSW_Download, args=(identifer, version[x]), daemon=True).start()
+
+    def Extract_IPSW(self, version, identifer):
+        self.console_print(f'Starting Extraction of {version} IPSW for {identifer}')
+        Extract = IPSW_Control(console_print=self.console_print)
+        for x in range(len(version)):
+            threading.Thread(target=Extract.Unzip_Decrypt_Files, args=(identifer, version[x]), daemon=True).start()
+
 
 app = QApplication()
 window = MainWindow()

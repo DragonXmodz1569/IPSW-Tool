@@ -1,6 +1,8 @@
 /Modules/GUI/Main Menu.py
 IPSW Files/*
 Work_Directory
+Extracted_Directory
 Modules/DataBases/*
 .idea
 .gitignore
+test.py
