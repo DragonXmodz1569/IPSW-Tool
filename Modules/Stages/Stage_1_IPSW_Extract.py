@@ -142,7 +142,7 @@ class IPSW_Control:
             if ipsw['Extracted'] in Folder_Exception:
                 continue
             os.makedirs(ipsw["Extracted Location"], exist_ok=True)
-            unzip_command = subprocess.Popen(['unzip', f"{ipsw['File Location']}/{ipsw['File Name']}", '-d', ipsw['Extracted Location']], text=True)
+            unzip_command = subprocess.Popen(['unzip', f"{ipsw['File Location']}/{ipsw['File Name']}", '-d', ipsw['Extracted Location']], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
             self.Processors.append(unzip_command)
             ipsw['Extracted'] = 'Part 1 unZip Done'
 
