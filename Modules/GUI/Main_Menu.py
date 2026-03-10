@@ -151,12 +151,17 @@ class MainWindow(QMainWindow):
     def Extract_IPSW(self, version, identifer):
         if QApplication.keyboardModifiers() == Qt.ShiftModifier:
             self.console_print(f'Starting Extraction of All Local IPSW for {identifer}')
-            Extract = IPSW_Control(console_print=self.console_print)
-            Extract.IPSW_Files_Locate(identifer)
-            threading.Thread(target=Extract.Unzip_Decrypt_Files, args=(identifer,), daemon=True).start()
+            def run_extract():
+                Extract = IPSW_Control(console_print=self.console_print)
+                Extract.IPSW_Files_Locate(identifer)
+                Extract.Unzip_Decrypt_Files(identifer)
+            threading.Thread(target=run_extract, daemon=True).start()
         else:
             self.console_print(f'Starting Extraction of {version} IPSW for {identifer}')
             Extract = IPSW_Control(console_print=self.console_print)
+            if len(version) == 0:
+                self.console_print(f'Error Please Select a IOS Version for {identifer}')
+                return
             for x in range(len(version)):
                 threading.Thread(target=Extract.Unzip_Decrypt_Files, args=(identifer, version[x]), daemon=True).start()
 

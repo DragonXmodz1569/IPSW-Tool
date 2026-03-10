@@ -30,6 +30,35 @@ class IPSW_Control:
         self.Processors.clear()
         return failed
 
+    def Stage_Updater(self, file, iPhone_Model):
+        Extracted_path = file.replace('.ipsw', '').split('_')
+        Extracted_Origins = os.path.join(self.Extract_Path, iPhone_Model, f'{Extracted_path[1]}_{Extracted_path[2]}')
+        Extracted_Check_part_1 = os.path.exists(Extracted_Origins)
+        Extracted_Check_End = None
+
+        if Extracted_Check_part_1 == True:
+            Extracted_Check_End = 'Part 1 unZip Done'
+            current_folders = []
+            for folder in os.listdir(Extracted_Origins):
+                if os.path.isdir(os.path.join(Extracted_Origins, folder)):
+                    current_folders.append(folder)
+            if len(current_folders) == 1:
+                Extracted_Check_End = False
+                shutil.rmtree(Extracted_Origins)
+            if len(current_folders) >= 2:
+                for check in current_folders:
+                    if os.path.isfile(check):
+                        continue
+                    if check == 'Extra':
+                        for check2 in os.listdir(os.path.join(Extracted_Origins, check)):
+                            if check2 == 'PEM':
+                                Extracted_Check_End = 'Part 2 AEADecryption Done'
+
+        if not Extracted_Check_part_1:
+            return False, Extracted_Origins
+
+        return Extracted_Check_End, Extracted_Origins
+
     def IPSW_Files_Locate(self, iPhone_Model=None, iPhone_Version=None):
         if iPhone_Model is None:
             self.console_print('[Stage 1] No iPhone Model provided Must be provided')
@@ -56,14 +85,15 @@ class IPSW_Control:
                     file_version = file_part[1]
                     if Chosen_Version and file_version != Chosen_Version:
                         continue
-            Extracted_path = file.replace('.ipsw', '').split('_')
-            Extracted_Check = os.path.exists(os.path.join(self.Extract_Path,Chosen_Model['identifier'],f'{Extracted_path[1]}_{Extracted_path[2]}'))
+
+            Folder_Results, Folder_Path = self.Stage_Updater(file, iPhone_Model)
+
             self.Downloaded_IPSW_Files.append({
                 'File Location': os.path.join(self.IPSW_Directory, Chosen_Model['identifier']),
                 'File Name': file,
                 'Size': os.path.getsize(os.path.join(self.IPSW_Directory,Chosen_Model['identifier'],file)),
-                'Extracted Location': os.path.join(self.Extract_Path, Chosen_Model['identifier'],f'{Extracted_path[1]}_{Extracted_path[2]}'),
-                'Extracted': Extracted_Check
+                'Extracted Location': Folder_Path,
+                'Extracted': Folder_Results
             })
 
     def Unzip_Decrypt_Files(self, iPhone_Model=None, iPhone_Version=None):
@@ -79,14 +109,15 @@ class IPSW_Control:
                 file_version = file_part[1]
                 if iPhone_Version and file_version != iPhone_Version:
                     continue
-                Extracted_path = file.replace('.ipsw', '').split('_')
-                Extracted_Check = os.path.exists(os.path.join(self.Extract_Path, iPhone_Model, f'{Extracted_path[1]}_{Extracted_path[2]}'))
+
+                Folder_Results, Folder_Path = self.Stage_Updater(file, iPhone_Model)
+
                 iPhone_Version = []
                 iPhone_Version .append({
                     'File Location': os.path.join(self.IPSW_Directory, iPhone_Model),
                     'File Name': file,
-                    'Extracted Location': os.path.join(self.Extract_Path, iPhone_Model,f'{Extracted_path[1]}_{Extracted_path[2]}'),
-                    'Extracted': Extracted_Check
+                    'Extracted Location': Folder_Path,
+                    'Extracted': Folder_Results
                 })
                 match = True
             if not match:
@@ -106,15 +137,32 @@ class IPSW_Control:
                 extract_list.extend(item)
             else:
                 extract_list.append(item)
+        Folder_Exception = ['Part 1 unZip Done', 'Part 2 AEADecryption Done', True]
         for ipsw in extract_list:
-            if ipsw['Extracted']:
+            if ipsw['Extracted'] in Folder_Exception:
                 continue
             os.makedirs(ipsw["Extracted Location"], exist_ok=True)
-            unzip_command = subprocess.Popen(['unzip', f"{ipsw['File Location']}/{ipsw['File Name']}", '-d', ipsw['Extracted Location']], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
+            unzip_command = subprocess.Popen(['unzip', f"{ipsw['File Location']}/{ipsw['File Name']}", '-d', ipsw['Extracted Location']], text=True)
             self.Processors.append(unzip_command)
+            ipsw['Extracted'] = 'Part 1 unZip Done'
 
         failed = self.wait_process()
         if len(failed) > 0:
             print(f'Stage 1 have {len(failed)} failed')
-        self.console_print(f'[{iPhone_Model}][Stage 1] IPSW UnzipPart 1/10 Finished for {iPhone_Version}')
+        for update_stage_1 in extract_list:
+            if update_stage_1['Extracted'] in Folder_Exception[1:]:
+                continue
+            self.console_print(f'[{iPhone_Model}][Stage 1] IPSW UnzipPart 1/10 Finished for {update_stage_1["Extracted Location"].split("/")[-1]}')
+            self.console_print("----------------------------------------------------")
+            self.console_print(f'[{iPhone_Model}][Stage 1] IPSW Initialising Stage 2')
+
+        for ipsw in extract_list:
+            self.console_print(f'[{iPhone_Model}][{ipsw["File Name"].split("_")[2]}] Grabbing PEM file')
+            if ipsw['Extracted'] in Folder_Exception[2:]:
+                continue
+            if os.path.exists(os.path.join(ipsw['Extracted Location'], 'Extra', 'PEM')):
+                continue
+            os.makedirs(os.path.join(ipsw['Extracted Location'], 'Extra', 'PEM'), exist_ok=True)
+            self.Processors.append(subprocess.Popen(['ipsw', 'extract', '--fcs-key', os.path.join(ipsw['File Location'], ipsw['File Name']), '-o', os.path.join(ipsw['Extracted Location'], 'Extra', 'PEM')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True))
+
 
