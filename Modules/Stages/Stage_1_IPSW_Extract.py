@@ -261,7 +261,6 @@ class IPSW_Control:
                 if files not in ipsw_list['APFS Files']:
                     continue
                 if os.path.exists(os.path.join(ipsw_list['Extract Path'], 'Extra', files.replace('.dmg', ''))):
-                    print(f'skipped {files}')
                     continue
                 self.Console_Print(f'[Stage 3] Attaching {files} to extract')
                 Attach_File_Command = subprocess.run([
@@ -286,3 +285,17 @@ class IPSW_Control:
                 subprocess.run([
                     'hdiutil', 'detach', volumes
                 ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def Main(self, Model=None, IOS=None):
+        if Model is None:
+            self.Console_Print('[Stage 1] No Model Selected or found')
+            return
+        self.Database_Loader()
+        if IOS is None:
+            self.IPSW_File_Locate(Model)
+            self.Stage_1_Unzip_Decrypted_File()
+            self.Stage_2_AFPS_Extraction()
+        if IOS is not None:
+            self.IPSW_File_Locate(Model, IOS)
+            self.Stage_1_Unzip_Decrypted_File()
+            self.Stage_2_AFPS_Extraction()
