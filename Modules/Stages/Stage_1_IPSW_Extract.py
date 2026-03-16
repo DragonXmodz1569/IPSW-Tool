@@ -90,7 +90,7 @@ class IPSW_Control:
 
         return Stage, Extracted_Folder_Path
 
-    def Database_Loader(self, Get_Database=False):
+    def Database_Loader(self, Get_Database=False): #Need to sort Get_Database function sorted so IOS_Data_Grabber needs updating
         Root_Dir = 'Modules/DataBases'
         if Get_Database:
             return

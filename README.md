@@ -9,6 +9,7 @@ A simple Python tool for working with Apple IPSW firmware files.
 - Multi IOS Actioning
 - Downloading iPhone Updates
 - Supports only iPhone At moment
+- no root required
 
 ## In Progress
 - GUI support (PySide6 interface being built)
@@ -21,11 +22,12 @@ A simple Python tool for working with Apple IPSW firmware files.
 - AI learning / memory features for automation
 - Support Multi Platform (spread out to windows and linux next)
 - Multiple API for more AI with custom prompts changing ability (so can jailbreak it)
+- Add CLI Menu
 
 ## Requirements
-- macOS (Built on Macbook Pro 2024 M4 with 24GB RAM running Tahoe 26.3 as of post)
+- macOS (Built on Macbook Pro 2024 M4 with 24GB RAM running Tahoe 26.3.1 as of post)
 - Python 3.14+
-- Wifi (Mainly for first run and Download IPSW Files)
+- Partial Wifi (Mainly for first run to get Database and Download IPSW Files)
 - Tools used:
   - `hdiutil`
   - `7z`
