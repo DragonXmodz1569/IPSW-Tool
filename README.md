@@ -13,7 +13,8 @@ A simple Python tool for working with Apple IPSW firmware files.
 
 ## In Progress
 - GUI support (PySide6 interface being built)
-- Update IPSW_Control.py to work with gui (Work in Progress)
+- Updates Database grabber to work with Stage 1 IPSW file
+- Add button to check what stage a file on, delete file extracted directory, refresh database
 
 ## Planned Features
 - Support all Apple devices (iPhone, iPad, iPod, etc.)
