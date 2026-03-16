@@ -286,16 +286,34 @@ class IPSW_Control:
                     'hdiutil', 'detach', volumes
                 ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+    def Stage_3_Cache_Extraction(self):
+        self.Console_Print("-------------------------------------------------------")
+        for ipsw_list in self.Downloaded_IPSW_Files:
+            if ipsw_list['Current Stage'] in self.Stages[4:]:
+                continue
+            self.Console_Print(f'[Stage 4] Locating Cache Folder')
+            for x in range(len(ipsw_list['APFS Files'])):
+                for dmg_folder in os.listdir(os.path.join(ipsw_list['Extract Path'], 'Extra', ipsw_list['APFS Files'][x].replace('.dmg', ''))):
+                    if not os.path.exists(os.path.join(ipsw_list['Extract Path'], 'Extra', ipsw_list['APFS Files'][x].replace('.dmg', ''), dmg_folder, 'System/Library/Caches/com.apple.dyld')):
+                        continue
+                    self.Console_Print(f'[Stage 4] Found Dyld Cache in {ipsw_list["APFS Files"][x]}')
+                    ipsw_list['DYLD Cache'] = os.path.join(ipsw_list['Extract Path'], 'Extra', ipsw_list['APFS Files'][x].replace('.dmg', ''), dmg_folder, 'System/Library/Caches/com.apple.dyld', 'dyld_shared_cache_arm64e')
+            self.Console_Print(f'[Stage 4] Starting Dyld Cache Extraction')
+            subprocess.run([
+                'ipsw', 'dyld', 'extract', ipsw_list['DYLD Cache'], '--all', '-o', os.path.join(ipsw_list['Extract Path'], 'Extra', 'Dyld Cache')
+            ],stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL , check=True)
+
+
     def Main(self, Model=None, IOS=None):
         if Model is None:
             self.Console_Print('[Stage 1] No Model Selected or found')
             return
         self.Database_Loader()
+
         if IOS is None:
             self.IPSW_File_Locate(Model)
-            self.Stage_1_Unzip_Decrypted_File()
-            self.Stage_2_AFPS_Extraction()
         if IOS is not None:
             self.IPSW_File_Locate(Model, IOS)
-            self.Stage_1_Unzip_Decrypted_File()
-            self.Stage_2_AFPS_Extraction()
+
+        self.Stage_1_Unzip_Decrypted_File()
+        self.Stage_2_AFPS_Extraction()

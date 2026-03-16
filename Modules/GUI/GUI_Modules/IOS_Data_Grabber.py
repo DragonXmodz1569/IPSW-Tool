@@ -156,38 +156,6 @@ class iPhone:
         else:
             raise Exception("Error")
 
-    def Beta_IOS(self, Wifi_Check=True, Grab_iPhone=True):
-        if (self.Wifi_Status and Wifi_Check):
-            if Grab_iPhone:
-                self.Beta_IOS_Index = []
-                self.iPhone_Beta_IOS_Index = []
-                for i in range(len(self.iPhone_Models)):
-                    IOS_URL = self.IPSW_API + "/firmware/" + self.iPhone_Models[i]["identifier"]
-                    Model_Version = requests.get(IOS_URL).json()
-                    temp_iPhone_IOS_Index = []
-                    for fw in Model_Version.get('firmwares', []):
-                        if fw['beta']:
-                            version = fw.get('version')
-                            temp_iPhone_IOS_Index.append(version)
-                    self.iPhone_Beta_IOS_Index.append({
-                        "name": self.iPhone_Models[i]["name"],
-                        "identifier": self.iPhone_Models[i]["identifier"],
-                        "versions": temp_iPhone_IOS_Index
-                    })
-                for device in self.iPhone_Beta_IOS_Index:
-                    for v in device["versions"]:
-                        if v not in self.Beta_IOS_Index:
-                            self.Beta_IOS_Index.append(v)
-                self.Beta_IOS_Index.sort(key=lambda v: [int(x) for x in v.split(".")])
-        elif (not self.Wifi_Status) or (not Wifi_Check):
-            for device in self.Offline_iPhone_IOS:
-                for v in device["versions"]:
-                    if v not in self.Offline_Beta_IOS_Index:
-                        self.Offline_Beta_IOS_Index.append(v)
-            self.Offline_Beta_IOS_Index.sort(key=lambda v: [int(x) for x in v.split(".")])
-        else:
-            raise Exception("Error")
-
     def Main_Function(self):
         self.Grab_Apple_Models()
         self.Stable_IOS()
