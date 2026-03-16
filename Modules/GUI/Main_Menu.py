@@ -159,7 +159,7 @@ class MainWindow(QMainWindow):
         else:
             self.console_print(f'Starting Extraction of {version} IPSW for {identifer}')
             Extract = IPSW_Control(console_print=self.console_print)
-            if len(version) == 0:
+            if version is None:
                 self.console_print(f'Error Please Select a IOS Version for {identifer}')
                 return
             for x in range(len(version)):

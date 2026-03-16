@@ -1,168 +1,288 @@
 import json
 import os
-import subprocess
+import plistlib
 import shutil
-
+import subprocess
 
 
 class IPSW_Control:
     def __init__(self, IPSW_Directory='IPSW Files', Extract_Path='Extracted_Directory', console_print=None):
-        self.console_print = console_print or (lambda msg: None)
-        if not os.path.exists(IPSW_Directory):
-            self.console_print('IPSW Directory does not exist please Double Check')
-            return
-        self.IPSW_Directory = IPSW_Directory
-        with open('Modules/DataBases/iPhone_Models.json', 'r') as iPhone_Models:
-            self.iPhone_Model_map = json.load(iPhone_Models)
-        with open('Modules/DataBases/iPhone_IOS.json', 'r') as iPhone_Versions:
-            self.iPhone_Version_map = json.load(iPhone_Versions)
-        self.Extract_Path = Extract_Path
-        os.makedirs(self.Extract_Path, exist_ok=True)
-        self.Downloaded_IPSW_Files = []
         self.Processors = []
+        self.Downloaded_IPSW_Files = []
 
-    def wait_process(self):
+        self.IPSW_Directory = IPSW_Directory
+        self.Root_Extract_Path = Extract_Path
+
+        self.iPhone_Model_Map = []
+        self.iPhone_Version_Map = []
+        self.iPad_Model_Map = []
+        self.Mac_Model_Map = []
+
+        self.Stages = ['Stage 0',
+                       'Stage 1 Unzipped', 'Stage 2 AEADecryption',
+                       'Stage 3 APFS Extraction'
+                       'Stage 4 Cache Extraction'
+                       ]
+
+        if console_print is None:
+            self.Console_Print = print
+        else:
+            self.Console_Print = console_print
+
+    def get_dir_size(self, path):
+        total = 0
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                fp = os.path.join(root, file)
+                try:
+                    total += os.path.getsize(fp)
+                except OSError:
+                    pass
+        return total
+
+    def wait_processes(self):
         failed = []
-        for Process in self.Processors:
-            ouput = Process.communicate()[0]
-            if Process.returncode != 0:
-                failed.append((Process.returncode, ouput))
+        for process in self.Processors:
+            output, _ = process.communicate()
+            if process.returncode != 0:
+                failed.append({
+                    "returncode": process.returncode,
+                    "output": output
+                })
         self.Processors.clear()
         return failed
 
-    def Stage_Updater(self, file, iPhone_Model):
-        Extracted_path = file.replace('.ipsw', '').split('_')
-        Extracted_Origins = os.path.join(self.Extract_Path, iPhone_Model, f'{Extracted_path[1]}_{Extracted_path[2]}')
-        Extracted_Check_part_1 = os.path.exists(Extracted_Origins)
-        Extracted_Check_End = None
-
-        if Extracted_Check_part_1 == True:
-            Extracted_Check_End = 'Part 1 unZip Done'
-            current_folders = []
-            for folder in os.listdir(Extracted_Origins):
-                if os.path.isdir(os.path.join(Extracted_Origins, folder)):
-                    current_folders.append(folder)
-            if len(current_folders) == 1:
-                Extracted_Check_End = False
-                shutil.rmtree(Extracted_Origins)
-            if len(current_folders) >= 2:
-                for check in current_folders:
-                    if os.path.isfile(check):
-                        continue
-                    if check == 'Extra':
-                        for check2 in os.listdir(os.path.join(Extracted_Origins, check)):
-                            if check2 == 'PEM':
-                                Extracted_Check_End = 'Part 2 AEADecryption Done'
-
-        if not Extracted_Check_part_1:
-            return False, Extracted_Origins
-
-        return Extracted_Check_End, Extracted_Origins
-
-    def IPSW_Files_Locate(self, iPhone_Model=None, iPhone_Version=None):
+    def IPSW_Stage_Finder(self, iPhone_Model=None, IPSW_File=None):
         if iPhone_Model is None:
-            self.console_print('[Stage 1] No iPhone Model provided Must be provided')
+            self.Console_Print('Error with iPhone Model not provided')
             return
-        Chosen_Version = None
-        for Model_info in self.iPhone_Model_map:
+        if IPSW_File is None:
+            self.Console_Print('Error with IPSW File not provided')
+            return
+        self.Console_Print(f'[Prep Stage] Grabbing {IPSW_File} Stage')
+        Extracted_Folder_Name = IPSW_File.replace('.ipsw', '').split('_')
+        Extracted_Folder_Path = os.path.join(self.Root_Extract_Path, iPhone_Model, f'{Extracted_Folder_Name[1]}_{Extracted_Folder_Name[2]}')
+        Stage = 'Stage 0'
+        if os.path.exists(Extracted_Folder_Path):
+            if self.get_dir_size(Extracted_Folder_Path) <= os.path.getsize(os.path.join(self.IPSW_Directory, iPhone_Model,IPSW_File)):
+                return 'Stage -1', Extracted_Folder_Path
+            if os.path.exists(os.path.join(Extracted_Folder_Path, 'Extra')):
+                if os.path.exists(os.path.join(Extracted_Folder_Path, 'Extra', '.DS_Store')):
+                    os.remove(os.path.join(Extracted_Folder_Path, 'Extra', '.DS_Store'))
+                if self.get_dir_size(os.path.join(Extracted_Folder_Path, 'Extra')) <= 100:
+                    return 'Stage -2', Extracted_Folder_Path
+                for Stage1_Check in os.listdir(os.path.join(Extracted_Folder_Path, 'Extra', 'Pem')):
+                    if Stage1_Check.endswith('.pem'):
+                        Stage = 'Stage 2 AEADecryption'
+                        for Stage2_Check in os.listdir(os.path.join(Extracted_Folder_Path)):
+                            if Stage2_Check.endswith('.dmg.aea'):
+                                Stage = 'Stage 3 APFS Extraction'
+                            else:
+                                Pass = 0
+                                for Stage3_Check_Root in os.listdir(os.path.join(Extracted_Folder_Path)):
+                                    for Stage3_Check in os.listdir(os.path.join(Extracted_Folder_Path, "Extra")):
+                                        if not Stage3_Check_Root.endswith('.dmg'):
+                                            continue
+                                        if Stage3_Check_Root.replace('.dmg', '') in Stage3_Check:
+                                            Pass += 1
+                                if Pass == 3:
+                                    Stage = 'Stage 4 Cache Extraction'
+
+        return Stage, Extracted_Folder_Path
+
+    def Database_Loader(self, Get_Database=False):
+        Root_Dir = 'Modules/DataBases'
+        if Get_Database:
+            return
+
+        if not Get_Database:
+            if not os.path.exists(Root_Dir):
+                return
+            for file in os.listdir(f'{Root_Dir}'):
+                if file == 'iPhone_IOS.json':
+                    with open(f'{Root_Dir}/iPhone_IOS.json') as json_file:
+                        self.iPhone_Version_Map.extend(json.load(json_file))
+                if file == 'iPhone_Models.json':
+                    with open(f'{Root_Dir}/iPhone_Models.json') as json_file:
+                        self.iPhone_Model_Map.extend(json.load(json_file))
+                if file == 'iPad_Models.json':
+                    with open(f'{Root_Dir}/iPad_Models.json') as json_file:
+                        self.iPad_Model_Map.extend(json.load(json_file))
+                if file == 'Mac_Models.json':
+                    with open(f'{Root_Dir}/Mac_Models.json') as json_file:
+                        self.Mac_Model_Map.extend(json.load(json_file))
+            return
+
+    def IPSW_File_Locate(self, iPhone_Model=None, iPhone_Version=None):
+        self.Console_Print("-------------------------------------------------------")
+        if iPhone_Model is None:
+            self.Console_Print(f'[Stage 1][ERROR] Model Selected is invalid {iPhone_Model}')
+            return
+        Chosen_Model = None
+        Chosen_IOS_Version = None
+        for Model_info in self.iPhone_Model_Map:
             if Model_info['identifier'] == iPhone_Model or Model_info['name'] == iPhone_Model:
                 Chosen_Model = Model_info
-                for version_map in self.iPhone_Version_map:
-                    if version_map['name'] == Chosen_Model['name'] or version_map['identifier'] == Chosen_Model['identifier']:
+                for version_map in self.iPhone_Version_Map:
+                    if version_map['identifier'] == iPhone_Model or version_map['name'] == iPhone_Model:
                         if iPhone_Version is None:
-                            Chosen_Version = version_map['versions']
+                            Chosen_IOS_Version = version_map['versions']
                         if iPhone_Version is not None:
                             for ios in version_map['versions']:
                                 if ios == iPhone_Version:
-                                    Chosen_Version = ios
+                                    Chosen_IOS_Version = ios
+        if Chosen_IOS_Version is None:
+            self.Console_Print('Error with Chosen IOS Version')
+            return
 
-        for file in os.listdir(os.path.join(self.IPSW_Directory, Chosen_Model['identifier'])):
-            if not file.endswith('.ipsw'):
+        for ipsw_file in os.listdir(os.path.join(self.IPSW_Directory, Chosen_Model['identifier'])):
+            if not ipsw_file.endswith('.ipsw'):
                 continue
-            if Chosen_Version:
-                if isinstance(Chosen_Version, str):
-                    file_part = file.replace('.ipsw', '').split('_')
-                    file_version = file_part[1]
-                    if Chosen_Version and file_version != Chosen_Version:
-                        continue
-
-            Folder_Results, Folder_Path = self.Stage_Updater(file, iPhone_Model)
+            if isinstance(Chosen_IOS_Version, str):
+                ipsw_file_part = ipsw_file.replace('.ipsw', '').split('_')
+                ipsw_file_version = ipsw_file_part[1]
+                if ipsw_file_version != Chosen_IOS_Version:
+                    continue
+            Stage, Extract_Location = self.IPSW_Stage_Finder(Chosen_Model['identifier'], ipsw_file)
+            self.Console_Print(f'[Prep Stage] {ipsw_file} is on {Stage}')
 
             self.Downloaded_IPSW_Files.append({
-                'File Location': os.path.join(self.IPSW_Directory, Chosen_Model['identifier']),
-                'File Name': file,
-                'Size': os.path.getsize(os.path.join(self.IPSW_Directory,Chosen_Model['identifier'],file)),
-                'Extracted Location': Folder_Path,
-                'Extracted': Folder_Results
+                'File Name': ipsw_file,
+                'File Path': os.path.join(self.IPSW_Directory, Chosen_Model['identifier']),
+                'File Size': os.path.getsize(os.path.join(self.IPSW_Directory, Chosen_Model['identifier'], ipsw_file)),
+                'Extract Path': Extract_Location,
+                'Current Stage': Stage,
             })
+        return
 
-    def Unzip_Decrypt_Files(self, iPhone_Model=None, iPhone_Version=None):
-        if iPhone_Model is None:
-            self.console_print('[Stage 1] No iPhone Model provided Must be provided')
-            return
-        if iPhone_Version:
-            match = False
-            for file in os.listdir(os.path.join(self.IPSW_Directory, iPhone_Model)):
-                if not file.endswith('.ipsw'):
+    def Stage_1_Unzip_Decrypted_File(self):
+        self.Console_Print("-------------------------------------------------------")
+
+        if self.Downloaded_IPSW_Files is None:
+            self.Console_Print('[Stage 1][ERROR] Please Run IPSW_File_Locate First')
+        #Unzip Main IPSW File or retry
+        for ipsw_list in self.Downloaded_IPSW_Files:
+            if ipsw_list['Current Stage'] in self.Stages[2:] or ipsw_list['Current Stage'] == 'Stage -2':
+                continue
+            if ipsw_list['Current Stage'] == 'Stage -1':
+                self.Console_Print(f'[Stage 1][Error] {ipsw_list["File Name"]} had issue Deleting and starting again')
+                shutil.rmtree(os.path.join(ipsw_list['Extract Path']))
+            if os.path.exists(ipsw_list['Extract Path']) == False:
+                self.Console_Print(f'[Stage 1] Unzipping {ipsw_list["File Name"]}')
+                Unzip_Command = subprocess.Popen(['unzip', os.path.join(ipsw_list['File Path'], ipsw_list['File Name']), '-d', ipsw_list['Extract Path']], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                self.Processors.append(Unzip_Command)
+            ipsw_list['Current Stage'] = 'Stage 2 AEADecryption'
+
+        self.wait_processes()
+
+        # Decryption Part for AEA files
+        self.Console_Print("-------------------------------------------------------")
+        for ipsw_list in self.Downloaded_IPSW_Files:
+            if ipsw_list['Current Stage'] in self.Stages[3:]:
+                continue
+            if ipsw_list['Current Stage'] == 'Stage -2':
+                os.removedirs(os.path.join(ipsw_list['Extract Path'], 'Extra'))
+                ipsw_list['Current Stage'] = 'Stage 2 AEADecryption'
+            if os.path.exists(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem')) == False:
+                self.Console_Print(f'[Stage 2] Grabbing Pem File for {ipsw_list["File Name"]}')
+                os.makedirs(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem'))
+                subprocess.run(['ipsw', 'extract', '--fcs-key', os.path.join(ipsw_list['File Path'], ipsw_list['File Name']), '-o', os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                for folder in os.listdir(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem')):
+                    for pem_file in os.listdir(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem', folder)):
+                        shutil.move(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem', folder, pem_file), os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem'))
+                        ipsw_list['Pem File'] = pem_file
+                        os.removedirs(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem', folder))
+            else: #need updating for pem directory
+                self.Console_Print(f'[Stage 2] Updated Pem Location Data For {ipsw_list["File Name"]}')
+                for pem_file in os.listdir(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem')):
+                    if pem_file.startswith('.'):
+                        continue
+                    if os.path.isdir(os.path.join(ipsw_list['Extract Path'], 'Extra','Pem', pem_file)):
+                        if self.get_dir_size(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem', pem_file)) > 0:
+                            for pem_sub_file in os.listdir(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem', pem_file)):
+                                if pem_sub_file.startswith('.'):
+                                    continue
+                                shutil.move(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem', pem_file, pem_sub_file), os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem'))
+                                ipsw_list['Pem File'] = pem_sub_file
+                                os.removedirs(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem', pem_file))
+                        else:
+                            try:
+                                if not pem_file.split('__')[1] == ipsw_list['File Path'].split('/')[1]:
+                                    continue
+                                os.removedirs(os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem', pem_file))
+                            except:
+                                continue
+                    ipsw_list['Pem File'] = pem_file
+
+            ipsw_list['APFS Files'] = []
+            for Encrypted_AEA_Files in os.listdir(ipsw_list['Extract Path']):
+                if not Encrypted_AEA_Files.endswith('.dmg.aea'):
                     continue
-                file_part = file.replace('.ipsw', '').split('_')
-                file_version = file_part[1]
-                if iPhone_Version and file_version != iPhone_Version:
+                self.Console_Print(f'[Stage 2] Decrypting {Encrypted_AEA_Files} from {ipsw_list["File Name"]}')
+                AEA_Decrypt_Command = subprocess.Popen([
+                    'ipsw', 'fw', 'aea', '--pem',
+                    os.path.join(ipsw_list['Extract Path'], 'Extra', 'Pem', ipsw_list['Pem File']), os.path.join(ipsw_list['Extract Path'], Encrypted_AEA_Files), '-o', ipsw_list['Extract Path']
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                ipsw_list['APFS Files'].append(Encrypted_AEA_Files.replace('.aea', ''))
+                self.Processors.append(AEA_Decrypt_Command)
+
+            if not len(ipsw_list['APFS Files']) >= 3:
+                for files in os.listdir(ipsw_list['Extract Path']):
+                    if files in ipsw_list['APFS Files']:
+                        continue
+                    if not files.endswith('.dmg'):
+                        continue
+                    file_result = subprocess.run(['file', os.path.join(ipsw_list['Extract Path'], files)], capture_output=True, text=True)
+                    if str(file_result.stdout).split(':')[1].split(',')[0] == ' Apple File System (APFS)':
+                        ipsw_list['APFS Files'].append(files)
+
+            self.wait_processes()
+
+            #Help Tidy Directory don't need the encrypted dmg files any more :)
+            for encrypt_aea in os.listdir(ipsw_list['Extract Path']):
+                if not encrypt_aea.endswith('.dmg.aea'):
                     continue
+                os.remove(os.path.join(ipsw_list['Extract Path'], encrypt_aea))
+            self.Console_Print(f'[Stage 2] Completed Stage for {ipsw_list["File Name"]}')
+            ipsw_list['Current Stage'] = 'Stage 3 APFS Extraction'
+        return
 
-                Folder_Results, Folder_Path = self.Stage_Updater(file, iPhone_Model)
-
-                iPhone_Version = []
-                iPhone_Version .append({
-                    'File Location': os.path.join(self.IPSW_Directory, iPhone_Model),
-                    'File Name': file,
-                    'Extracted Location': Folder_Path,
-                    'Extracted': Folder_Results
-                })
-                match = True
-            if not match:
-                self.console_print('[Stage 1] IPSW Files Dont Exist Please Download File')
-                return
-        if iPhone_Version is None:
-            if len(self.Downloaded_IPSW_Files) == 0:
-                print('[Stage 1] No iPhone Version provided or Provided by IPSW_Files_Locate')
-                self.console_print('[Stage 1] No iPhone Version provided or Provided by IPSW_Files_Locate')
-                return
-            if len(self.Downloaded_IPSW_Files) >= 1:
-                iPhone_Version = [self.Downloaded_IPSW_Files]
-
-        extract_list = []
-        for item in iPhone_Version:
-            if isinstance(item, list):
-                extract_list.extend(item)
-            else:
-                extract_list.append(item)
-        Folder_Exception = ['Part 1 unZip Done', 'Part 2 AEADecryption Done', True]
-        for ipsw in extract_list:
-            if ipsw['Extracted'] in Folder_Exception:
+    def Stage_2_AFPS_Extraction(self):
+        self.Console_Print("-------------------------------------------------------")
+        for ipsw_list in self.Downloaded_IPSW_Files:
+            if ipsw_list['Current Stage'] in self.Stages[3:]:
                 continue
-            os.makedirs(ipsw["Extracted Location"], exist_ok=True)
-            unzip_command = subprocess.Popen(['unzip', f"{ipsw['File Location']}/{ipsw['File Name']}", '-d', ipsw['Extracted Location']], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
-            self.Processors.append(unzip_command)
-            ipsw['Extracted'] = 'Part 1 unZip Done'
 
-        failed = self.wait_process()
-        if len(failed) > 0:
-            print(f'Stage 1 have {len(failed)} failed')
-        for update_stage_1 in extract_list:
-            if update_stage_1['Extracted'] in Folder_Exception[1:]:
-                continue
-            self.console_print(f'[{iPhone_Model}][Stage 1] IPSW UnzipPart 1/10 Finished for {update_stage_1["Extracted Location"].split("/")[-1]}')
-            self.console_print("----------------------------------------------------")
-            self.console_print(f'[{iPhone_Model}][Stage 1] IPSW Initialising Stage 2')
+            ipsw_list['APFS Volumes'] = []
 
-        for ipsw in extract_list:
-            self.console_print(f'[{iPhone_Model}][{ipsw["File Name"].split("_")[2]}] Grabbing PEM file')
-            if ipsw['Extracted'] in Folder_Exception[2:]:
-                continue
-            if os.path.exists(os.path.join(ipsw['Extracted Location'], 'Extra', 'PEM')):
-                continue
-            os.makedirs(os.path.join(ipsw['Extracted Location'], 'Extra', 'PEM'), exist_ok=True)
-            self.Processors.append(subprocess.Popen(['ipsw', 'extract', '--fcs-key', os.path.join(ipsw['File Location'], ipsw['File Name']), '-o', os.path.join(ipsw['Extracted Location'], 'Extra', 'PEM')], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True))
-
-
+            for files in os.listdir(ipsw_list['Extract Path']):
+                if not files.endswith('.dmg'):
+                    continue
+                if files not in ipsw_list['APFS Files']:
+                    continue
+                if os.path.exists(os.path.join(ipsw_list['Extract Path'], 'Extra', files.replace('.dmg', ''))):
+                    print(f'skipped {files}')
+                    continue
+                self.Console_Print(f'[Stage 3] Attaching {files} to extract')
+                Attach_File_Command = subprocess.run([
+                    'hdiutil', 'attach', '-readonly', '-nobrowse', '-plist',
+                    os.path.join(ipsw_list['Extract Path'], files)
+                ], stdout=subprocess.PIPE, check=True)
+                attach_info = plistlib.loads(Attach_File_Command.stdout)
+                for tab in attach_info['system-entities']:
+                    if 'mount-point' in tab:
+                        Mount_Point = tab['mount-point']
+                        ipsw_list['APFS Volumes'].append(Mount_Point)
+                        Extract_Attached_Command = subprocess.Popen([
+                            'rsync', '-a', Mount_Point, os.path.join(ipsw_list['Extract Path'], 'Extra', files.replace('.dmg', ''))
+                        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                        ipsw_list['Current Stage'] = 'Stage 4 Cache Extraction'
+                        self.Processors.append(Extract_Attached_Command)
+            self.wait_processes()
+            for volumes in ipsw_list['APFS Volumes']:
+                if not os.path.exists(volumes):
+                    continue
+                self.Console_Print(f'[Stage 3] Detaching {volumes}')
+                subprocess.run([
+                    'hdiutil', 'detach', volumes
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

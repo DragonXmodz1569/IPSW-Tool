@@ -62,14 +62,14 @@ class iPhone:
                     self.Offline_iPhone_IOS.extend(offios)
             if not self.Wifi_Status:
                 self.console_print("[Warning] Error With Wifi Running in Offline Mode")
-                self.console_print("----------------------------------------------------")
+                self.console_print("-------------------------------------------------------")
                 self.console_print(f"[Statuses] Offline iPhone Database: {self.Offline_iPhone_Models_Files}")
                 self.console_print(f"[Statuses] Offline IOS Database: {self.Offline_iPhone_IOS_Files}")
-                self.console_print("----------------------------------------------------")
+                self.console_print("-------------------------------------------------------")
                 self.console_print(f"[Statuses] Offline iPad Database: {self.Offline_iPad_Models_Files}")
-                self.console_print("----------------------------------------------------")
+                self.console_print("-------------------------------------------------------")
                 self.console_print(f"[Statuses] Offline Mac Database: {self.Offline_Mac_Models_Files}")
-                self.console_print("----------------------------------------------------")
+                self.console_print("-------------------------------------------------------")
 
 
         self.IPSW_API = "https://api.ipsw.me/v4"
@@ -88,7 +88,7 @@ class iPhone:
                 if Product["identifier"].startswith("Mac"):
                     self.Mac_Models.append(Product)
             if len(self.iPhone_Models) > 0:
-                self.console_print("----------------------------------------------------")
+                self.console_print("-------------------------------------------------------")
                 self.console_print("[Apple Models] Saving iPhone Models for Offline Mode")
                 if os.path.exists("Modules/DataBases/iPhone_Models.json"):
                     self.console_print("[Apple Models] Error iPhone_Models.json already exists")
@@ -99,7 +99,7 @@ class iPhone:
                 self.console_print("[Apple Models] Saved iPhone_Models.json Completed")
 
             if len(self.iPad_Models) > 0:
-                self.console_print("----------------------------------------------------")
+                self.console_print("-------------------------------------------------------")
                 self.console_print("[Apple Models] Saving iPad Models for Offline Mode")
                 if os.path.exists("Modules/DataBases/iPad_Models.json"):
                     self.console_print("[Apple Models] Error iPad_Models.json already exists")
@@ -110,7 +110,7 @@ class iPhone:
                 self.console_print("[Apple Models] Saved iPad_Models.json Completed")
 
             if len(self.Mac_Models) > 0:
-                self.console_print("----------------------------------------------------")
+                self.console_print("-------------------------------------------------------")
                 self.console_print("[Apple Models] Saving Mac Models for Offline Mode")
                 if os.path.exists("Modules/DataBases/Mac_Models.json"):
                     self.console_print("[Apple Models] Error Mac_Models.json already exists")
@@ -119,7 +119,7 @@ class iPhone:
                 with open("Modules/DataBases/Mac_Models.json", 'w') as file:
                     json.dump(self.Mac_Models, file, indent=4)
                 self.console_print("[Apple Models] Saved Mac_Models.json Completed")
-            self.console_print("----------------------------------------------------")
+            self.console_print("-------------------------------------------------------")
         elif (not self.Wifi_Status or not Wifi_Check):
             return
         else:
