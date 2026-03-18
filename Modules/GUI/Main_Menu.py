@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt, QObject, Signal
 
 from Modules.GUI.GUI_Modules import IOS_Data_Grabber
 from Modules.API_and_WebScrapers.IPSW_API import Stable
-from Modules.Stages.Stage_1_IPSW_Extract import IPSW_Control
+from Modules.Stages.Stage_1_IPSW import IPSW_Control
 
 def ident_key(ident: str):
     m = re.match(r"^iPhone(\d+),(\d+)$", ident)

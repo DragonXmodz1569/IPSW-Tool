@@ -317,3 +317,4 @@ class IPSW_Control:
 
         self.Stage_1_Unzip_Decrypted_File()
         self.Stage_2_AFPS_Extraction()
+        self.Stage_3_Cache_Extraction()
