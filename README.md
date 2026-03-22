@@ -13,7 +13,8 @@ A simple Python tool for working with Apple IPSW firmware files.
 
 ## In Progress
 - GUI support (PySide6 interface being built)
-- Updates Database grabber to work with Stage 1 IPSW file
+- Add Stage_2_Binary.py to GUI
+- Auto Decompile Whole Dylib file and compare where change was so end up with 2 file (Full Decompiled Code and Changed Function Part)
 - Add button to check what stage a file on, delete file extracted directory, refresh database
 
 ## Planned Features

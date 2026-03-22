@@ -88,7 +88,7 @@ class Binary_Compare:
 
                 if item["Type"] == "Dir":
                     get_dylibs(item.get("Children", []), result)
-
+        self.Console_Print('-------------------------------------------------------')
         IPSW_Mapping.sort(key=lambda x: x['IPSW Name'])
         Old = IPSW_Mapping[0]['Data']
         New = IPSW_Mapping[1]['Data']
