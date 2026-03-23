@@ -128,7 +128,7 @@ class Binary_Compare:
                 with open(os.path.join(self.Extract_Path, IPSW_Mapping[1]['IPSW Name'].strip('_Dyld_Mapping.json'), 'Extra', 'IPSW_Removed.json'), 'a+') as f:
                     json.dump(("REMOVED:", path), f, indent=4)
 
-    def IPSW_Extra(self, IOS=None, Target='All', Target_Compare_IOS=None):
+    def Dyld_Extract_Extra(self, IOS=None, Target='All', Target_Compare_IOS=None):
         IOS_Targets = []
         Target_Dyld = []
         if IOS is not None:
