@@ -6,7 +6,7 @@ from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QPushButton, QListWidget, QPlainTextEdit, QGroupBox, QAbstractItemView
 from PySide6.QtCore import Qt, QObject, Signal
 
-from Modules.GUI.GUI_Modules import IOS_Data_Grabber
+from Modules.API_and_WebScrapers.IPSW_IOS_Models import Apple
 from Modules.API_and_WebScrapers.IPSW_API import Stable
 from Modules.Stages.Stage_1_IPSW import IPSW_Control
 
@@ -94,11 +94,10 @@ class MainWindow(QMainWindow):
         br = QWidget();
         br.setLayout(QVBoxLayout())
 
-        IOS_Func = IOS_Data_Grabber.iPhone(self.console_print)
-        Models, IOS, self.before_iPhone_IOS = IOS_Func.Main_Function()
-        IOS.sort(key=lambda v: [int(x) for x in v.split(".")],reverse=True)
+        IOS_Func = Apple(self.console_print)
+        iPhone_Models, self.iPhone_Versions = IOS_Func.Main_Function()
 
-        sorted_devices = sorted(Models, key=lambda d: ident_key(d["identifier"]), reverse=True)
+        sorted_devices = sorted(iPhone_Models, key=lambda d: ident_key(d["identifier"]), reverse=True)
         nameidentifier = [{"name": d["name"], "identifier": d["identifier"]} for d in sorted_devices]
 
         for item in nameidentifier:
@@ -128,14 +127,19 @@ class MainWindow(QMainWindow):
     def Model_From_List(self, current):
         model = current.text()
         model_name, model_ident = model.split(" | ")
-        for ios in self.before_iPhone_IOS:
+        self.IOS_List.clear()
+        versions = []
+        seen = set()
+        for ios in self.iPhone_Versions:
             if ios.get("identifier", "") == model_ident:
-                self.IOS_List.clear()
-                seen = []
-                for items in ios.get('versions'):
-                    if items not in seen:
-                        seen.append(items)
-                        self.IOS_List.addItem(items)
+                for firmware in ios.get("firmwares", []):
+                    version = firmware.get("version", "")
+                    if version and version not in seen:
+                        seen.add(version)
+                        versions.append(version)
+
+                for version in reversed(versions):
+                    self.IOS_List.addItem(version)
 
     def unselect_item(self, pos):
         item = self.IOS_List.itemAt(pos)

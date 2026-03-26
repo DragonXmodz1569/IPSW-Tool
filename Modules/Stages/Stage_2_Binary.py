@@ -128,6 +128,40 @@ class Binary_Compare:
                 with open(os.path.join(self.Extract_Path, IPSW_Mapping[1]['IPSW Name'].strip('_Dyld_Mapping.json'), 'Extra', 'IPSW_Removed.json'), 'a+') as f:
                     json.dump(("REMOVED:", path), f, indent=4)
 
+    def Decompile_Binary(self, IOS_Root_Folder=None, Binary=None):
+        if IOS_Root_Folder is None:
+            self.Console_Print('[Decompile] No IOS was Given')
+            return
+        IOS_Root_Folder_Before = IOS_Root_Folder
+        if IOS_Root_Folder is not None:
+            for Root_Dir in os.listdir(self.Extract_Path):
+                if Root_Dir.split("_")[0] == IOS_Root_Folder:
+                    IOS_Root_Folder = os.path.join(self.Extract_Path, Root_Dir)
+                elif Root_Dir == IOS_Root_Folder:
+                    IOS_Root_Folder = os.path.join(self.Extract_Path, Root_Dir)
+                else:
+                    continue
+        if IOS_Root_Folder == IOS_Root_Folder_Before:
+            self.Console_Print('[Decompile] No IOS Extracted was Found')
+            return
+        if Binary is None:
+            self.Console_Print('[Decompile] No Binary was Given')
+            return
+        if not os.path.exists(os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary)):
+            self.Console_Print('[Decompile] Binary not found')
+        if not os.path.exists(os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "_imports.txt"))):
+            self.Console_Print('[Decompile] Binary imports not found')
+        if not os.path.exists(os.path.join(IOS_Root_Folder, 'Extra', 'Dyld Cache', Binary.replace(".dyld", "_strings.txt"))):
+            self.Console_Print('[Decompile] Binary Strings not found')
+        if not os.path.exists(os.path.join(IOS_Root_Folder, 'Extra', 'Dyld Cache', Binary.replace(".dyld", "_Symbols.txt"))):
+            self.Console_Print('[Decompile] Binary Symbols not found')
+        Binary_Full_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary)
+        Binary_Imports_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "_imports.txt"))
+        Binary_Strings_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "_strings.txt"))
+        Binary_Symbols_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "Starts.txt"))
+        Binary_Symbols_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "_Symbols.txt"))
+
+
     def Dyld_Extract_Extra(self, IOS=None, Target='All', Target_Compare_IOS=None):
         IOS_Targets = []
         Target_Dyld = []
@@ -214,15 +248,19 @@ class Binary_Compare:
             self.Console_Print(f'[Binary] Completed IPSW Symbols {len(Target_Dyld)}/{len(Target_Dyld)}')
             self.Console_Print('-------------------------------------------------------')
             for x in range(len(Target_Dyld)):
-                self.Console_Print(f'[Binary] Running IPSW Macho Symbols on {Target_Dyld[x]} on {x}/{len(Target_Dyld)}')
+                self.Console_Print(f'[Binary] Running IPSW Macho Start on {Target_Dyld[x]} on {x}/{len(Target_Dyld)}')
                 with open(os.path.join(self.Extract_Path, Root_Folders, 'Extra', 'Dyld Cache',Target_Dyld[x].replace('.dylib', '_Starts.txt')), 'w') as f:
                     image_path = '/' + Target_Dyld[x].lstrip('/')
-                    subprocess.run([
+                    result = subprocess.run([
                         'ipsw', 'dyld', 'macho',
                         os.path.join(Dyld_Cache, 'System', 'Library', 'Caches', 'com.apple.dyld', 'dyld_shared_cache_arm64e'),
                         image_path,
                         '--starts'
-                    ], stdout=f, stderr=subprocess.DEVNULL, check=True)
+                    ], stdout=f, stderr=subprocess.PIPE, check=True)
+
+                    if result.returncode != 0:
+                        print(f"FAILED: {image_path}")
+                        print(result.stderr)
             self.Console_Print(f'[Binary] Completed IPSW Starts {len(Target_Dyld)}/{len(Target_Dyld)}')
             self.Console_Print('-------------------------------------------------------')
             for x in range(len(Target_Dyld)):

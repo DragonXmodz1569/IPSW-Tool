@@ -132,6 +132,7 @@ class IPSW_Control:
                                 if ios == iPhone_Version:
                                     Chosen_IOS_Version = ios
         if Chosen_IOS_Version is None:
+            #current issue with ios versions grabbing not 100% correct 26.4 was missing
             self.Console_Print('Error with Chosen IOS Version')
             return
 
@@ -302,7 +303,6 @@ class IPSW_Control:
             subprocess.run([
                 'ipsw', 'dyld', 'extract', ipsw_list['DYLD Cache'], '--all', '-o', os.path.join(ipsw_list['Extract Path'], 'Extra', 'Dyld Cache')
             ],stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL , check=True)
-
 
     def Main(self, Model=None, IOS=None):
         if Model is None:
