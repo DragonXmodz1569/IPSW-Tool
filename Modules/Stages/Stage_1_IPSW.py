@@ -128,9 +128,10 @@ class IPSW_Control:
                         if iPhone_Version is None:
                             Chosen_IOS_Version = version_map['versions']
                         if iPhone_Version is not None:
-                            for ios in version_map['versions']:
-                                if ios == iPhone_Version:
-                                    Chosen_IOS_Version = ios
+                            for firm in version_map['firmwares']:
+                                if firm['version'] == iPhone_Version:
+                                    Chosen_IOS_Version = firm['version']
+
         if Chosen_IOS_Version is None:
             #current issue with ios versions grabbing not 100% correct 26.4 was missing
             self.Console_Print('Error with Chosen IOS Version')
@@ -318,3 +319,4 @@ class IPSW_Control:
         self.Stage_1_Unzip_Decrypted_File()
         self.Stage_2_AFPS_Extraction()
         self.Stage_3_Cache_Extraction()
+        self.Console_Print(f'[Stage 1 IPSW] Completed')

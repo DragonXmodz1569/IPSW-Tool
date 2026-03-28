@@ -1,6 +1,11 @@
+import hashlib
+from datetime import datetime
 import json
 import os
+import re
+import shutil
 import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 class Binary_Compare:
@@ -128,40 +133,6 @@ class Binary_Compare:
                 with open(os.path.join(self.Extract_Path, IPSW_Mapping[1]['IPSW Name'].strip('_Dyld_Mapping.json'), 'Extra', 'IPSW_Removed.json'), 'a+') as f:
                     json.dump(("REMOVED:", path), f, indent=4)
 
-    def Decompile_Binary(self, IOS_Root_Folder=None, Binary=None):
-        if IOS_Root_Folder is None:
-            self.Console_Print('[Decompile] No IOS was Given')
-            return
-        IOS_Root_Folder_Before = IOS_Root_Folder
-        if IOS_Root_Folder is not None:
-            for Root_Dir in os.listdir(self.Extract_Path):
-                if Root_Dir.split("_")[0] == IOS_Root_Folder:
-                    IOS_Root_Folder = os.path.join(self.Extract_Path, Root_Dir)
-                elif Root_Dir == IOS_Root_Folder:
-                    IOS_Root_Folder = os.path.join(self.Extract_Path, Root_Dir)
-                else:
-                    continue
-        if IOS_Root_Folder == IOS_Root_Folder_Before:
-            self.Console_Print('[Decompile] No IOS Extracted was Found')
-            return
-        if Binary is None:
-            self.Console_Print('[Decompile] No Binary was Given')
-            return
-        if not os.path.exists(os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary)):
-            self.Console_Print('[Decompile] Binary not found')
-        if not os.path.exists(os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "_imports.txt"))):
-            self.Console_Print('[Decompile] Binary imports not found')
-        if not os.path.exists(os.path.join(IOS_Root_Folder, 'Extra', 'Dyld Cache', Binary.replace(".dyld", "_strings.txt"))):
-            self.Console_Print('[Decompile] Binary Strings not found')
-        if not os.path.exists(os.path.join(IOS_Root_Folder, 'Extra', 'Dyld Cache', Binary.replace(".dyld", "_Symbols.txt"))):
-            self.Console_Print('[Decompile] Binary Symbols not found')
-        Binary_Full_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary)
-        Binary_Imports_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "_imports.txt"))
-        Binary_Strings_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "_strings.txt"))
-        Binary_Symbols_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "Starts.txt"))
-        Binary_Symbols_Path = os.path.join(IOS_Root_Folder,'Extra', 'Dyld Cache', Binary.replace(".dyld", "_Symbols.txt"))
-
-
     def Dyld_Extract_Extra(self, IOS=None, Target='All', Target_Compare_IOS=None):
         IOS_Targets = []
         Target_Dyld = []
@@ -205,7 +176,6 @@ class Binary_Compare:
                         with open(os.path.join(self.Extract_Path, Root_Folders, 'Extra', dyld_map), 'r') as f:
                             data = json.load(f)
                             Target_Dyld.extend(extract_file_paths(data))
-
             elif Target.lower() == 'change':
                 if Target_Compare_IOS is not None:
                     for new_root_folder in os.listdir(self.Extract_Path):
@@ -213,7 +183,6 @@ class Binary_Compare:
                             temp = new_root_folder
                 else:
                     temp = Root_Folders
-                print(os.path.join(self.Extract_Path, temp, 'Extra', 'IPSW_Changes.json'))
                 with open(os.path.join(self.Extract_Path, temp, 'Extra', 'IPSW_Changes.json'), 'r') as f:
                     for line in f:
                         line = line.strip()
@@ -224,21 +193,54 @@ class Binary_Compare:
                 return
 
             for x in range(len(Target_Dyld)):
+                if os.path.exists(os.path.join(Target_Dyld[x].replace('.dylib', '_strings.txt'))):
+                    self.Console_Print(f'[Binary] {Target_Dyld[x]} Already Ran Before Skipping {x}/{len(Target_Dyld)}')
+                    continue
+                target = Target_Dyld[x]
+                if '/usr/' in target:
+                    image_path = target[target.index('/usr/'):]
+                elif 'usr/' in target:
+                    image_path = '/' + target[target.index('usr/'):]
+                elif '/System/' in target:
+                    image_path = target[target.index('/System/'):]
+                elif 'System/' in target:
+                    image_path = '/' + target[target.index('System/'):]
+                else:
+                    self.Console_Print(f'[Binary] Skipping invalid dyld image path: {target}')
+                    continue
                 self.Console_Print(f'[Binary] Running IPSW Macho Strings on {Target_Dyld[x]} on {x}/{len(Target_Dyld)}')
-                with open(os.path.join(self.Extract_Path, Root_Folders, 'Extra', 'Dyld Cache',Target_Dyld[x].replace('.dylib', '_strings.txt')), 'w') as f:
-                    image_path = '/' + Target_Dyld[x].lstrip('/')
+                with open(os.path.join(Target_Dyld[x].replace('.dylib', '_strings.txt')), 'w') as f:
                     subprocess.run([
                         'ipsw', 'dyld', 'macho',
-                        os.path.join(Dyld_Cache, 'System', 'Library', 'Caches', 'com.apple.dyld', 'dyld_shared_cache_arm64e'),
+                        os.path.join(Dyld_Cache,
+                                     'System',
+                                     'Library',
+                                     'Caches',
+                                     'com.apple.dyld',
+                                     'dyld_shared_cache_arm64e'),
                         image_path,
                         '--strings'
                     ], stdout=f, stderr=subprocess.DEVNULL, check=True)
             self.Console_Print(f'[Binary] Completed IPSW Strings {len(Target_Dyld)}/{len(Target_Dyld)}')
             self.Console_Print('-------------------------------------------------------')
             for x in range(len(Target_Dyld)):
+                if os.path.exists(os.path.join(Target_Dyld[x].replace('.dylib', '_Symbols.txt'))):
+                    self.Console_Print(f'[Binary] {Target_Dyld[x]} Already Ran Before Skipping {x}/{len(Target_Dyld)}')
+                    continue
+                target = Target_Dyld[x]
+                if '/usr/' in target:
+                    image_path = target[target.index('/usr/'):]
+                elif 'usr/' in target:
+                    image_path = '/' + target[target.index('usr/'):]
+                elif '/System/' in target:
+                    image_path = target[target.index('/System/'):]
+                elif 'System/' in target:
+                    image_path = '/' + target[target.index('System/'):]
+                else:
+                    self.Console_Print(f'[Binary] Skipping invalid dyld image path: {target}')
+                    continue
                 self.Console_Print(f'[Binary] Running IPSW Macho Symbols on {Target_Dyld[x]} on {x}/{len(Target_Dyld)}')
-                with open(os.path.join(self.Extract_Path, Root_Folders, 'Extra', 'Dyld Cache',Target_Dyld[x].replace('.dylib', '_Symbols.txt')), 'w') as f:
-                    image_path = '/' + Target_Dyld[x].lstrip('/')
+                with open(os.path.join(Target_Dyld[x].replace('.dylib', '_Symbols.txt')), 'w') as f:
                     subprocess.run([
                         'ipsw', 'dyld', 'macho',
                         os.path.join(Dyld_Cache, 'System', 'Library', 'Caches', 'com.apple.dyld', 'dyld_shared_cache_arm64e'),
@@ -248,28 +250,307 @@ class Binary_Compare:
             self.Console_Print(f'[Binary] Completed IPSW Symbols {len(Target_Dyld)}/{len(Target_Dyld)}')
             self.Console_Print('-------------------------------------------------------')
             for x in range(len(Target_Dyld)):
+                if os.path.exists(os.path.join(Target_Dyld[x].replace('.dylib', '_Starts.txt'))):
+                    self.Console_Print(f'[Binary] {Target_Dyld[x]} Already Ran Before Skipping {x}/{len(Target_Dyld)}')
+                    continue
+                target = Target_Dyld[x]
+                if '/usr/' in target:
+                    image_path = target[target.index('/usr/'):]
+                elif 'usr/' in target:
+                    image_path = '/' + target[target.index('usr/'):]
+                elif '/System/' in target:
+                    image_path = target[target.index('/System/'):]
+                elif 'System/' in target:
+                    image_path = '/' + target[target.index('System/'):]
+                else:
+                    self.Console_Print(f'[Binary] Skipping invalid dyld image path: {target}')
+                    continue
                 self.Console_Print(f'[Binary] Running IPSW Macho Start on {Target_Dyld[x]} on {x}/{len(Target_Dyld)}')
-                with open(os.path.join(self.Extract_Path, Root_Folders, 'Extra', 'Dyld Cache',Target_Dyld[x].replace('.dylib', '_Starts.txt')), 'w') as f:
-                    image_path = '/' + Target_Dyld[x].lstrip('/')
-                    result = subprocess.run([
+                with open(os.path.join(Target_Dyld[x].replace('.dylib', '_Starts.txt')), 'w') as f:
+                    subprocess.run([
                         'ipsw', 'dyld', 'macho',
                         os.path.join(Dyld_Cache, 'System', 'Library', 'Caches', 'com.apple.dyld', 'dyld_shared_cache_arm64e'),
                         image_path,
                         '--starts'
                     ], stdout=f, stderr=subprocess.PIPE, check=True)
-
-                    if result.returncode != 0:
-                        print(f"FAILED: {image_path}")
-                        print(result.stderr)
             self.Console_Print(f'[Binary] Completed IPSW Starts {len(Target_Dyld)}/{len(Target_Dyld)}')
             self.Console_Print('-------------------------------------------------------')
             for x in range(len(Target_Dyld)):
+                if os.path.exists(os.path.join(Target_Dyld[x].replace('.dylib', '_imports.txt'))):
+                    self.Console_Print(f'[Binary] {Target_Dyld[x]} Already Ran Before Skipping {x}/{len(Target_Dyld)}')
+                    continue
+                target = Target_Dyld[x]
+                if '/usr/' in target:
+                    image_path = target[target.index('/usr/'):]
+                elif 'usr/' in target:
+                    image_path = '/' + target[target.index('usr/'):]
+                elif '/System/' in target:
+                    image_path = target[target.index('/System/'):]
+                elif 'System/' in target:
+                    image_path = '/' + target[target.index('System/'):]
+                else:
+                    self.Console_Print(f'[Binary] Skipping invalid dyld image path: {target}')
+                    continue
                 self.Console_Print(f'[Binary] Running IPSW Imports on {Target_Dyld[x]} on {x}/{len(Target_Dyld)}')
-                with open(os.path.join(self.Extract_Path, Root_Folders, 'Extra', 'Dyld Cache',Target_Dyld[x].replace('.dylib', '_imports.txt')), 'w') as f:
-                    image_path = '/' + Target_Dyld[x].lstrip('/')
+                with open(os.path.join(Target_Dyld[x].replace('.dylib', '_imports.txt')), 'w') as f:
                     subprocess.run([
                         'ipsw', 'dyld', 'imports',
                         os.path.join(Dyld_Cache, 'System', 'Library', 'Caches', 'com.apple.dyld', 'dyld_shared_cache_arm64e'),
                         image_path
                     ], stdout=f, stderr=subprocess.DEVNULL, check=True)
             self.Console_Print(f'[Binary] Completed IPSW Imports {len(Target_Dyld)}/{len(Target_Dyld)}')
+
+    def Binary_Decompile(self, Old_IOS=None, New_IOS=None, Target='All', Binary=None):
+        To_Compare = []
+        To_Compare.append(Old_IOS)
+        To_Compare.append(New_IOS)
+        if Target.lower() == 'all':
+            self.Console_Print('[Binary] All Function work in progress')
+            return
+        if Target.lower() == 'change':
+            Root_Directory = []
+            Change = []
+            Old = []
+            New = []
+            for x in range(len(To_Compare)):
+                for Root_Dir in os.listdir(self.Extract_Path):
+                    if Root_Dir.split('_')[0] == To_Compare[x]:
+                        Root_Directory.append(os.path.join(self.Extract_Path, Root_Dir))
+            for Root_Dir in Root_Directory:
+                if not Root_Dir.split('/')[-1].split('_')[0] == New_IOS:
+                    continue
+                with open(os.path.join(Root_Dir, 'Extra', 'IPSW_Changes.json'), 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line:
+                            Change.append(json.loads(line))
+            for x in range(len(Root_Directory)):
+                To_Compare.clear()
+                #Grab Both Old vs New Dylib
+                for item in Change:
+                    path = item['path']
+                    if os.path.exists(os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path)):
+                        Dyld_file = os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path)
+                    if os.path.exists(os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path.replace('.dylib', '_imports.txt'))):
+                        Dyld_Imports = os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path.replace('.dylib', '_imports.txt'))
+                    if os.path.exists(os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path.replace('.dylib', '_Starts.txt'))):
+                        Dyld_starts = os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path.replace('.dylib', '_Starts.txt'))
+                    if os.path.exists(os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path.replace('.dylib', '_strings.txt'))):
+                        Dyld_strings = os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path.replace('.dylib', '_strings.txt'))
+                    if os.path.exists(os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path.replace('.dylib', '_Symbols.txt'))):
+                        Dyld_Symbols = os.path.join(Root_Directory[x], 'Extra', 'Dyld Cache', path.replace('.dylib', '_Symbols.txt'))
+
+                    if Root_Directory[x].split('/')[-1].split('_')[0] == Old_IOS:
+                        Old.append({
+                        'Binary': Dyld_file,
+                        'Imports': Dyld_Imports,
+                        'Starts': Dyld_starts,
+                        'Strings': Dyld_strings,
+                        'Symbols': Dyld_Symbols
+                    })
+                    if Root_Directory[x].split('/')[-1].split('_')[0] == New_IOS:
+                        New.append({
+                        'Binary': Dyld_file,
+                        'Imports': Dyld_Imports,
+                        'Starts': Dyld_starts,
+                        'Strings': Dyld_strings,
+                        'Symbols': Dyld_Symbols
+                    })
+            self.Console_Print('-------------------------------------------------------')
+            self.Console_Print('[Binary] Mapped Each Function Now Grabbing Information')
+            for Main_Map in [Old, New]:
+                for x in range(len(Main_Map)):
+                    with open(Main_Map[x]['Starts'], 'r') as f:
+                        Starts = []
+                        for line in f:
+                            line = line.strip()
+                            if line.startswith('0x'):
+                                Starts.append(int(line, 16))
+                    Main_Map[x]['Starts_Data'] = sorted(Starts)
+                    with open(Main_Map[x]['Symbols'], 'r') as f:
+                        Symbols = {}
+                        for line in f:
+                            line = line.strip()
+                            # remove terminal color codes
+                            line = re.sub(r'\x1b\[[0-9;]*m', '', line)
+
+                            # match: 0xADDRESS: ... SYMBOLNAME
+                            match = re.search(r'(0x[0-9A-Fa-f]+):.*?([_A-Za-z][_A-Za-z0-9$]*)\s*$', line)
+                            if match:
+                                addr = int(match.group(1), 16)
+                                name = match.group(2)
+                                Symbols[addr] = name
+
+                    Main_Map[x]['Symbols_Data'] = Symbols
+
+                    Functions = []
+                    for i in range(len(Main_Map[x]['Starts_Data']) - 1):
+                        start = Main_Map[x]['Starts_Data'][i]
+                        end = Main_Map[x]['Starts_Data'][i+1]
+                        name = Main_Map[x]['Symbols_Data'].get(start, f'sub_{hex(start)}')
+
+                        Functions.append({
+                            'Name': name,
+                            'Start': start,
+                            'End': end
+                        })
+                    Main_Map[x]['Functions_Data'] = Functions
+
+            for Root in Root_Directory:
+                Cache = None
+                for dmg in os.listdir(Root):
+                    dmgs = []
+                    if not dmg.endswith('.dmg'):
+                        continue
+                    dmgs.append(dmg.replace('.dmg', ''))
+                    if dmg.replace('.dmg', '') in os.listdir(os.path.join(Root, 'Extra')):
+                        for sub_dmg_folder in os.listdir(os.path.join(Root, 'Extra', dmg.replace('.dmg', ''))):
+                            if os.path.exists(
+                                os.path.join(Root, 'Extra', dmg.replace('.dmg', ''),sub_dmg_folder, 'System', 'Library', 'Caches', 'com.apple.dyld')):
+                                Cache = os.path.join(Root, 'Extra', dmg.replace('.dmg', ''), sub_dmg_folder, 'System', 'Library', 'Caches', 'com.apple.dyld', 'dyld_shared_cache_arm64e')
+                if Cache is None:
+                    self.Console_Print('[Decompile] Error on Cache Grabbing')
+                    return
+
+            def get_function_code(disasm_lines, start, end): #ChatGPT Helped make parts Will remake below part with get_function_code mainly for testing
+                func_lines = []
+                inside = False
+                start_hex = hex(start)
+                end_hex = hex(end)
+                for line in disasm_lines:
+                    line = line.strip()
+                    # start capturing
+                    if start_hex in line:
+                        inside = True
+                    if inside:
+                        func_lines.append(line)
+                    # stop when we hit end
+                    if end_hex in line and inside:
+                        break
+
+                return func_lines
+
+            Old_Map = {}
+            for item in Old:
+                for func in item['Functions_Data']:
+                    if not func['Name'].startswith('sub_0x'):
+                        Old_Map[func['Name']] = {
+                            'Function': func,
+                            'Item': item
+                        }
+
+            New_Map = {}
+            for item in New:
+                for func in item['Functions_Data']:
+                    if not func['Name'].startswith('sub_0x'):
+                        New_Map[func['Name']] = {
+                            'Function': func,
+                            'Item': item
+                        }
+
+            def Process_Dylib_Disasm(dylib_file):
+                disasm_path = dylib_file['Binary'].replace('.dylib', '_Disasm.txt')
+                if os.path.exists(disasm_path):
+                    if os.path.getsize(disasm_path) == 0:
+                        os.remove(disasm_path)
+                    if os.path.getsize(disasm_path) > 0:
+                        return {
+                            'ok': 'Skipped',
+                            'file': dylib_file['Binary'],
+                        }
+                job_id = hashlib.md5(dylib_file['Binary'].encode()).hexdigest()[:8]
+                project_dir = os.path.join('Extracted_Directory', 'ghidra_tmp')
+                project_name = f'ghidra_proj_{job_id}'
+
+                os.makedirs(project_dir, exist_ok=True)
+                print(f'Working on {dylib_file["Binary"]}({os.path.getsize(dylib_file["Binary"]) / (1024*1024)}MB) at {datetime.now()}')
+                cmd = [
+                    'analyzeHeadless',
+                    project_dir,
+                    project_name,
+                    '-import', dylib_file['Binary'],
+                    '-max-cpu', '6',
+                    '-analysisTimeoutPerFile', '1800',
+                    '-scriptPath', 'Modules/GhidraHeadless',
+                    '-postScript', 'ExportDisasm.py', disasm_path,
+                    '-deleteProject',
+                ]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+
+                if result.returncode != 0:
+                    return {
+                        'ok': False,
+                        'file': dylib_file['Binary'],
+                        'code': result.returncode,
+                        'stdout': result.stdout,
+                        'stderr': result.stderr,
+                    }
+
+                if not os.path.exists(disasm_path):
+                    return {
+                        'ok': False,
+                        'file': dylib_file['Binary'],
+                        'code': 0,
+                        'stdout': result.stdout,
+                        'stderr': result.stderr + f'\nOutput file not created: {disasm_path}',
+                    }
+
+                dylib_file['Disasm'] = disasm_path
+                return {
+                    'ok': True,
+                    'file': dylib_file['Binary'],
+                }
+
+            failed_heap = []
+            failed_other = []
+            if os.path.exists('Extracted_Directory/ghidra_tmp'):
+                shutil.rmtree('Extracted_Directory/ghidra_tmp')
+            def Run_Disasm_Queue(items, max_workers=4):
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    futures = [executor.submit(Process_Dylib_Disasm, dylib) for dylib in items]
+
+                    for future in as_completed(futures):
+                        result = future.result()
+                        if result['ok'] == True:
+                            print(f"Done: {result['file']}")
+                        elif result['ok'] == 'Skipped':
+                            print(f"Skipped: {result['file']} Already Exists")
+                        else:
+                            print(f"Failed: {result['file']}")
+                            print(f"Return code: {result['code']}")
+
+                            if 'Java heap space' in result.get('stdout', ''):
+                                failed_heap.append(result['file'])
+                            else:
+                                failed_other.append(result['file'])
+
+                            print("STDOUT:")
+                            print(result['stdout'])
+                            print("STDERR:")
+                            print(result['stderr'])
+
+            Run_Disasm_Queue(Old, max_workers=2)
+            Run_Disasm_Queue(New, max_workers=2)
+            exit()
+
+            for item in New:
+                disasm_path = item['Binary'].replace('.dylib', '_Disasm.txt')
+                with open(disasm_path, 'r') as f:
+                    item['Disasm_Read'] = f.readlines()
+
+            for name in Old_Map:
+                if name in New_Map:
+                    old_function = Old_Map[name]['Function']
+                    new_function = New_Map[name]['Function']
+
+                    old_item = Old_Map[name]['Item']
+                    new_item = New_Map[name]['Item']
+
+                    old_code = get_function_code(old_item['Disasm_Read'], old_function['Start'], old_function['End'])
+                    new_code = get_function_code(new_item['Disasm_Read'], new_function['Start'], new_function['End'])
+
+                    if old_code != new_code:
+                        print('CHANGED:', name)
+
+        else:
+            self.Console_Print('[Binary] Error has raised please choose [All | Change]')

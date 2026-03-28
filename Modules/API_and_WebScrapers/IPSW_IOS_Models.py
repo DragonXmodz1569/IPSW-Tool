@@ -97,6 +97,8 @@ class Apple:
 
     def Stable_Apple_Versions(self, Grab_iPhone=True):
         if Grab_iPhone:
+            self.Console_Print("-------------------------------------------------------")
+            self.Console_Print('[Apple Models] Updating iPhone Models Versions')
             iPhone_Index = []
             for i in range(len(self.iPhone_Models)):
                 IOS_Url = self.IPSW_API + '/device/' + self.iPhone_Models[i]['identifier']
@@ -110,6 +112,8 @@ class Apple:
             iPhone_Index = sorted(iPhone_Index, key=lambda x: x['identifier'])
             with open('Modules/DataBases/iPhone_IOS.json', 'w') as outfile:
                 json.dump(iPhone_Index, outfile, indent=4)
+
+        self.Console_Print("-------------------------------------------------------")
 
 
     def Main_Function(self):

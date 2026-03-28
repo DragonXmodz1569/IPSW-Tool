@@ -14,6 +14,7 @@ A simple Python tool for working with Apple IPSW firmware files.
 ## In Progress
 - GUI support (PySide6 interface being built)
 - Add Stage_2_Binary.py to GUI
+- Stage_2_Binary Functionality
 - Auto Decompile Whole Dylib file and compare where change was so end up with 2 file (Full Decompiled Code and Changed Function Part)
 - Add button to check what stage a file on, delete file extracted directory, refresh database
 
@@ -26,15 +27,17 @@ A simple Python tool for working with Apple IPSW firmware files.
 - Multiple API for more AI with custom prompts changing ability (so can jailbreak it)
 - Add CLI Menu
 - Add IPSW Beta when api comes available
+- Add Cluster or External Devices to run Ghidra on
 
 ## Requirements
-- macOS (Built on Macbook Pro 2024 M4 with 24GB RAM running Tahoe 26.3.1 as of post)
+- macOS (Built on Macbook Pro 2024 M4 with 24GB RAM running Tahoe 26.4 as of post)
 - Python 3.14+
 - Partial Wifi (Mainly for first run to get Database and Download IPSW Files)
 - Tools used:
   - `hdiutil`
   - `7z`
   - `IPSW`
+  - `Ghidra`
 
 ## Example Usage
 ```bash
