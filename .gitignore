@@ -1,4 +1,5 @@
-/Modules/GUI/Main Menu.py
+Modules/GUI/Main_Menu_old.py
+Modules/GUI/Pages/Template.py
 IPSW Files/*
 Work_Directory
 Extracted_Directory
@@ -6,3 +7,4 @@ Modules/DataBases/*
 .idea
 .gitignore
 test.py
+GUI_test.py
