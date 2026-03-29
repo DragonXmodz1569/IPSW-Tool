@@ -29,10 +29,10 @@ class MainWindows(QMainWindow):
         # create shared pages ONCE
         self.console_page = ConsolePage()
         self.iphone_page = iPhonePage(console_print=self.console_page.get_logger("iPhone Menu"))
-        self.dashboard_page = DashboardPage()
-        self.ipad_page = iPadPage()
-        self.mac_page = MacPage()
-        self.settings_page = SettingsPage()
+        self.dashboard_page = DashboardPage(console_print=self.console_page.get_logger("Dashboard"))
+        self.ipad_page = iPadPage(console_print=self.console_page.get_logger("iPad Menu"))
+        self.mac_page = MacPage(console_print=self.console_page.get_logger("Mac Menu"))
+        self.settings_page = SettingsPage(console_print=self.console_page.get_logger("Settings"))
 
         # add the SAME instances to the stack
         self.stack.addWidget(self.dashboard_page)
