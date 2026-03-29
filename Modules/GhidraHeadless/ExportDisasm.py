@@ -1,6 +1,15 @@
 # ExportDisasm.py
 #@category Export
 
+try:
+    from ghidra.app.util.headless import HeadlessScript
+    script = HeadlessScript.getRunningHeadlessScript()
+    if script and script.analysisTimeoutOccurred():
+        print("ANALYSIS TIMED OUT")
+        raise SystemExit
+except:
+    pass
+
 out_path = getScriptArgs()[0]
 
 fm = currentProgram.getFunctionManager()

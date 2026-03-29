@@ -463,14 +463,14 @@ class Binary_Compare:
                 project_name = f'ghidra_proj_{job_id}'
 
                 os.makedirs(project_dir, exist_ok=True)
-                print(f'Working on {dylib_file["Binary"]}({os.path.getsize(dylib_file["Binary"]) / (1024*1024)}MB) at {datetime.now()}')
+                print(f'Working on {dylib_file["Binary"]} ({os.path.getsize(dylib_file["Binary"]) / (1024*1024)} MB) at {datetime.now()}')
                 cmd = [
                     'analyzeHeadless',
                     project_dir,
                     project_name,
                     '-import', dylib_file['Binary'],
-                    '-max-cpu', '6',
-                    '-analysisTimeoutPerFile', '1800',
+                    '-max-cpu', '4',
+                    '-analysisTimeoutPerFile', '2100',
                     '-scriptPath', 'Modules/GhidraHeadless',
                     '-postScript', 'ExportDisasm.py', disasm_path,
                     '-deleteProject',
@@ -502,6 +502,7 @@ class Binary_Compare:
                 }
 
             failed_heap = []
+            timed_out = []
             failed_other = []
             if os.path.exists('Extracted_Directory/ghidra_tmp'):
                 shutil.rmtree('Extracted_Directory/ghidra_tmp')
@@ -521,6 +522,9 @@ class Binary_Compare:
 
                             if 'Java heap space' in result.get('stdout', ''):
                                 failed_heap.append(result['file'])
+                            elif "ANALYSIS TIMED OUT" in result.get('stout', ''):
+                                print(f'Timed Out: {result["file"]}')
+                                timed_out.append(result['file'])
                             else:
                                 failed_other.append(result['file'])
 
@@ -529,8 +533,9 @@ class Binary_Compare:
                             print("STDERR:")
                             print(result['stderr'])
 
-            Run_Disasm_Queue(Old, max_workers=2)
-            Run_Disasm_Queue(New, max_workers=2)
+            Run_Disasm_Queue(Old, max_workers= 1)
+            print('----------(new)----------')
+            Run_Disasm_Queue(New, max_workers= 1)
             exit()
 
             for item in New:
