@@ -1,6 +1,6 @@
 
 
-test = input('New Or Old? ')
+test = 'n'
 
 if test.lower() in ['new', 'n', 'ne']:
     from Modules.GUI.Main_Menu import MainWindows

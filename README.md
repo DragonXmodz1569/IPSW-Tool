@@ -17,6 +17,7 @@ A simple Python tool for working with Apple IPSW firmware files.
 - Stage_2_Binary Functionality
 - Auto Decompile Whole Dylib file and compare where change was so end up with 2 file (Full Decompiled Code and Changed Function Part)
 - Add button to check what stage a file on, delete file extracted directory, refresh database
+- Add Remote PCS to help Speed up Stage 2 or Decompile Larger Binary than current machine can Aka Macbook Pro M4 has 24GB Ram While Remote PC has 32GB
 
 ## Planned Features
 - Support all Apple devices (iPhone, iPad, iPod, etc.) (Only iPhone For moment)

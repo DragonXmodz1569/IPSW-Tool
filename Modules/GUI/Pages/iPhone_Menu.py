@@ -1,7 +1,7 @@
 import re
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QTextEdit, QGroupBox, QPushButton, QGridLayout, QListWidget, \
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QGroupBox, QPushButton, QGridLayout, QListWidget, \
     QAbstractItemView, QHBoxLayout
 
 from Modules.API_and_WebScrapers.IPSW_IOS_Models import Apple
