@@ -6,6 +6,7 @@ from Modules.GUI.Pages.iPad_Menu import iPadPage
 from Modules.GUI.Pages.Mac_Menu import MacPage
 from Modules.GUI.Pages.Console_Menu import ConsolePage
 from Modules.GUI.Pages.Settings_Menu import SettingsPage
+from Modules.GUI.Pages.PC_Helpers_Menu import PCPage
 
 
 class MainWindows(QMainWindow):
@@ -21,7 +22,7 @@ class MainWindows(QMainWindow):
         self.menu = QListWidget()
         self.menu.addItems([
             "Dashboard", "iPhone Stager", "iPad Stager",
-            "Mac Stager", "Console", "Settings"
+            "Mac Stager", "Console", "Remote PC's","Settings"
         ])
 
         self.stack = QStackedWidget()
@@ -33,6 +34,7 @@ class MainWindows(QMainWindow):
         self.ipad_page = iPadPage(console_print=self.console_page.get_logger("iPad Menu"))
         self.mac_page = MacPage(console_print=self.console_page.get_logger("Mac Menu"))
         self.settings_page = SettingsPage(console_print=self.console_page.get_logger("Settings"))
+        self.PC_Helper_Page = PCPage(console_print=self.console_page.get_logger("Remote PCs"))
 
         # add the SAME instances to the stack
         self.stack.addWidget(self.dashboard_page)
@@ -40,6 +42,7 @@ class MainWindows(QMainWindow):
         self.stack.addWidget(self.ipad_page)
         self.stack.addWidget(self.mac_page)
         self.stack.addWidget(self.console_page)
+        self.stack.addWidget(self.PC_Helper_Page)
         self.stack.addWidget(self.settings_page)
 
         self.menu.currentRowChanged.connect(self.change_page)
@@ -50,9 +53,14 @@ class MainWindows(QMainWindow):
         layout.addWidget(self.stack, 4)
 
     def change_page(self, index):
+        old_page = self.stack.currentWidget()
+        if old_page and hasattr(old_page, "on_leave"):
+            old_page.on_leave()
+
         self.stack.setCurrentIndex(index)
-        page = self.stack.widget(index)
-        if hasattr(page, "load_data"):
-            if not hasattr(page, "_loaded"):
-                page._loaded = True
-                page.load_data()
+
+        new_page = self.stack.currentWidget()
+        if hasattr(new_page, "load_data"):
+            if not hasattr(new_page, "_loaded"):
+                new_page._loaded = True
+                new_page.load_data()
