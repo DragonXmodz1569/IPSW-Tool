@@ -9,9 +9,10 @@ from Modules.API_and_WebScrapers.IPSW_IOS_Models import Apple
 
 class iPhonePage(QWidget):
     First_Ran = False
-    def __init__(self, console_print=None):
+    def __init__(self, console_print=None, Resources=None):
         super().__init__()
         self.Console_Print = console_print
+        self.shared_data = Resources
         self.Selected_Iphone_Model = None
         self.Selected_Iphone_Version = None
         self.iPhone_Models = QListWidget()
@@ -40,6 +41,10 @@ class iPhonePage(QWidget):
         test.clicked.connect(lambda: print(self.Selected_Iphone_Version, self.Selected_Iphone_Model))
         test.setFixedSize(90, 40)
 
+        test1= QPushButton("test")
+        test1.clicked.connect(lambda: print(self.shared_data.get_all_remote()))
+        test1.setFixedSize(90, 40)
+
         # Section 2 - Top Right
         section2 = QGroupBox("IPSW Functions")
         s2_layout = QHBoxLayout()
@@ -51,6 +56,7 @@ class iPhonePage(QWidget):
 
         s2_layout.addLayout(s2_button)
         s2_button.addWidget(test)
+        s2_button.addWidget(test1)
 
         section2.setLayout(s2_layout)
 

@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
 
 
 class MacPage(QWidget):
-    def __init__(self, console_print=None):
+    def __init__(self, console_print=None, Resources=None):
         super().__init__()
 
         layout = QVBoxLayout(self)

@@ -51,9 +51,10 @@ class MyListWidget(QListWidget):
 
 class PCPage(QWidget):
     First_Ran = False
-    def __init__(self, console_print=None):
+    def __init__(self, console_print=None, Resources=None):
         super().__init__()
         self.Console_Print = console_print
+        self.shared_data = Resources
         self.worker_thread = None
         self.stop_event = threading.Event()
         self.Selected_Host = None
@@ -78,9 +79,7 @@ class PCPage(QWidget):
         top_layout.addWidget(QLabel("Remote Computer List"))
         Add_Button = QPushButton('+⃝')
         Add_Button.setFixedSize(30, 30)
-        Add_Button.setStyleSheet("""
-    QPushButton { background-color: #3A3A3D; color: white;}
-    QPushButton:pressed { background-color: #1E1E20; } """)
+        Add_Button.setStyleSheet(""" QPushButton { background-color: #3A3A3D; color: white;} QPushButton:pressed { background-color: #1E1E20; } """)
         Add_Button.clicked.connect(self.Add_New_Computer)
         top_layout.addWidget(Add_Button)
 
@@ -91,15 +90,20 @@ class PCPage(QWidget):
         # Right area
         right = QWidget()
         right_layout = QVBoxLayout(right)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.setSpacing(5)
+        right_layout.setContentsMargins(5, 5, 5, 5)
 
         WOL_Button =  QPushButton('Wake-On-Lan')
         WOL_Button.setFixedSize(100, 40)
         WOL_Button.clicked.connect(lambda: self.Wake_On_Lan(self.Selected_Host))
-        WOL_Button.setStyleSheet(""" QPushButton { background-color: #3A3A3D; color: white;} QPushButton:pressed { background-color: #1E1E20; } """)
+        WOL_Button.setStyleSheet(""" QPushButton { background-color: black; color: white;} QPushButton:pressed { background-color: #1E1E20; } """)
 
-        right_layout.addWidget(WOL_Button, alignment=Qt.AlignLeft)
+        Shutdown_Button =  QPushButton('Shutdown')
+        Shutdown_Button.setFixedSize(100, 40)
+        Shutdown_Button.clicked.connect(lambda: self.Shutdown(self.Selected_Host))
+        Shutdown_Button.setStyleSheet(""" QPushButton { background-color: black; color: white;} QPushButton:pressed { background-color: #1E1E20; } """)
+
+
+        right_layout.addWidget(WOL_Button, alignment=Qt.AlignTop)
 
 
         left.setStyleSheet(""" background-color: #2F2F32; border: 1px solid #3A3A3D; border-radius: 10px; """)
@@ -108,7 +112,11 @@ class PCPage(QWidget):
         main_layout.addWidget(left)
         main_layout.addWidget(right)
 
+    #Button Functions below
     def Wake_On_Lan(self, Host_PC=None):
+        if Host_PC is None:
+            self.Console_Print(f'Please Select a Option as {Host_PC} not a option')
+            return
         for Host_PC in Host_PC:
             for device_info in self.Backend_Computer_List:
                 expected = f"{device_info['Host']} ({device_info['Username']}) | Active: {device_info['Active']}"
@@ -126,6 +134,7 @@ class PCPage(QWidget):
                     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
                     sock.sendto(magic_packet, ("255.255.255.255", 9))
 
+    #Menu Functions below
     def Add_New_Computer(self):
         Host_Machine, ok = QInputDialog.getText(self, "IP/Domain Name", "Please enter your Computer Name or IP Address")
         if ok:
@@ -187,17 +196,10 @@ class PCPage(QWidget):
         return match.group(0) if match else None
 
     def Background_Thread(self, PC_Activity=True):
-        while not self.stop_event.is_set():
-            for x in range(len(self.Backend_Computer_List)):
-                item = self.Backend_Computer_List[x]['Mac Address']
-                if (item is None or item in ["", " "]):
-                    self.Backend_Computer_List[x]['Mac Address'] = self.get_mac(self.Backend_Computer_List[x]['Host'])
-                    with open("Modules/DataBases/Machines.json", 'w') as file:
-                        json.dump(self.Backend_Computer_List, file, indent=4)
-
+        def PC_Activity_Thread():
             if PC_Activity:
                 if len(self.Backend_Computer_List) == 0:
-                    break
+                    return
                 for check in self.Backend_Computer_List:
                     if self.stop_event.is_set():
                         break
@@ -209,24 +211,54 @@ class PCPage(QWidget):
                             expected = f"{check['Host']} ({check['Username']}) | Active: {check['Active']}"
                             if item.text().startswith(f"{check['Host']} ({check['Username']})"):
                                 item.setText(expected)
+        def Shared_Thread():
+            if self.Computer_list.count() == 0:
+                print('Error in first bit')
+                return
+            if len(self.Backend_Computer_List) == 0:
+                return
+            append_list = []
+            for x in range(len(self.Backend_Computer_List)):
+                if self.Backend_Computer_List[x]['Active'] == True:
+                    append_list.append(self.Backend_Computer_List[x])
+            self.shared_data.copy_remote(append_list)
+
+        while not self.stop_event.is_set():
+            for x in range(len(self.Backend_Computer_List)):
+                item = self.Backend_Computer_List[x]['Mac Address']
+                if (item is None or item in ["", " "]):
+                    self.Backend_Computer_List[x]['Mac Address'] = self.get_mac(self.Backend_Computer_List[x]['Host'])
+                    with open("Modules/DataBases/Machines.json", 'w') as file:
+                        json.dump(self.Backend_Computer_List, file, indent=4)
+
+            if PC_Activity:
+                threading.Thread(target=PC_Activity_Thread).start()
+
+            if self.shared_data is not None:
+                threading.Thread(target=Shared_Thread).start()
+
             time.sleep(1)
 
-    def load_data(self):
-        if PCPage.First_Ran == False:
-            if os.path.exists("Modules/DataBases/Machines.json"):
-                with open("Modules/DataBases/Machines.json", 'r') as file:
-                    self.Backend_Computer_List = json.load(file)
-                with ThreadPoolExecutor() as executor:
-                    for i in range(len(self.Backend_Computer_List)):
-                        Results = executor.submit(self.is_Alive, self.Backend_Computer_List[i]['Host'])
-                        if not Results.result() == self.Backend_Computer_List[i]['Active']:
-                            self.Backend_Computer_List[i]['Active'] = Results.result()
-                        self.Computer_list.addItem(f"{self.Backend_Computer_List[i]['Host']} ({self.Backend_Computer_List[i]['Username']}) | Active: {self.Backend_Computer_List[i]['Active']}")
+    def on_enter(self):
+        self.stop_event.clear()
         if self.worker_thread and self.worker_thread.is_alive():
             self.Console_Print("Worker already running")
             return
+
         self.worker_thread = threading.Thread(target=self.Background_Thread, daemon=True)
         self.worker_thread.start()
+        self.Console_Print("PC page worker started")
+
+    def load_data(self):
+        if os.path.exists("Modules/DataBases/Machines.json"):
+            with open("Modules/DataBases/Machines.json", 'r') as file:
+                self.Backend_Computer_List = json.load(file)
+            with ThreadPoolExecutor() as executor:
+                for i in range(len(self.Backend_Computer_List)):
+                    Results = executor.submit(self.is_Alive, self.Backend_Computer_List[i]['Host'])
+                    if not Results.result() == self.Backend_Computer_List[i]['Active']:
+                        self.Backend_Computer_List[i]['Active'] = Results.result()
+                    self.Computer_list.addItem(f"{self.Backend_Computer_List[i]['Host']} ({self.Backend_Computer_List[i]['Username']}) | Active: {self.Backend_Computer_List[i]['Active']}")
 
     def on_leave(self):
         self.stop_event.set()
