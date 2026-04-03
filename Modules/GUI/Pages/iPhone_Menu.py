@@ -42,7 +42,7 @@ class iPhonePage(QWidget):
         test.setFixedSize(90, 40)
 
         test1= QPushButton("test")
-        test1.clicked.connect(lambda: print(self.shared_data.get_all_remote()))
+        test1.clicked.connect(lambda: print(self.shared_data.load_data('Active Remote PC List')))
         test1.setFixedSize(90, 40)
 
         # Section 2 - Top Right

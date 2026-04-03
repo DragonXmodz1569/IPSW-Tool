@@ -1,3 +1,6 @@
+import threading
+import time
+
 from PySide6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QListWidget, QStackedWidget
 
 from Modules.GUI.Pages.Dashboard_Menu import DashboardPage
@@ -11,13 +14,60 @@ from Modules.GUI.Pages.PC_Helpers_Menu import PCPage
 
 class Shared_Resources:
     def __init__(self):
-        self.Remote_Devices = []
+        self.List = {
+            'Active Remote PC List': []
+        }
+        threading.Thread(target=self.Background_Task, daemon=True).start()
 
-    def copy_remote(self, item):
-        self.Remote_Devices = item
+    def Background_Task(self):
+        while True:
+                remote_list = self.load_data('Remote PC List')
+                active_list = self.load_data('Active Remote PC List')
 
-    def get_all_remote(self):
-        return self.Remote_Devices
+                active_hosts = {device['Host'] for device in active_list}
+                for device in remote_list:
+                    if device['Active'] is True:
+                        if device['Host'] in active_hosts:
+                            continue
+                        self.add_resource('Active Remote PC List', device)
+
+                    if device['Active'] is False:
+                        for al in active_list:
+                            if device['Host'] == al['Host']:
+                                self.remove_resource('Active Remote PC List', al)
+                time.sleep(1)
+
+    def add_resource(self, List_Name, Data):
+        if isinstance(Data, dict):
+            devices = [Data]
+        elif isinstance(Data, list):
+            devices = Data
+        else:
+            print("❌ Invalid type passed to add_remote:", type(Data), Data)
+            return
+        if List_Name not in self.List:
+            self.List[List_Name] = []
+        for d in devices:
+            self.List[List_Name].append(d)
+
+    def remove_resource(self, List_Name, Data):
+        if List_Name in self.List:
+            if Data in self.List[List_Name]:
+                self.List[List_Name].remove(Data)
+
+            if not self.List[List_Name]:
+                del self.List[List_Name]
+
+    def change_resources(self, List_Name, Data, change):
+        if List_Name in self.List:
+            if Data in self.List[List_Name]:
+                change = change.split(', ')
+                if self.List[List_Name][change[0]] != change[1]:
+                    self.List[List_Name][change[0]] = change[1]
+
+    def load_data(self, List_Name):
+        return self.List.get(List_Name, [])
+
 
 class MainWindows(QMainWindow):
     def __init__(self):

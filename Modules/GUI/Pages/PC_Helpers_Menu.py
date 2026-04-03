@@ -7,10 +7,9 @@ import threading
 import time
 from concurrent.futures.thread import ThreadPoolExecutor
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton, QInputDialog, \
-    QAbstractItemView, QListWidget, QMenu
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton, QInputDialog, QAbstractItemView, QListWidget, QMenu
 
 
 #Used to inject shift clicking
@@ -86,7 +85,6 @@ class PCPage(QWidget):
         left_Root_layout.addWidget(top_widget)
         left_Root_layout.addWidget(self.Computer_list)
 
-
         # Right area
         right = QWidget()
         right_layout = QVBoxLayout(right)
@@ -102,9 +100,7 @@ class PCPage(QWidget):
         Shutdown_Button.clicked.connect(lambda: self.Shutdown(self.Selected_Host))
         Shutdown_Button.setStyleSheet(""" QPushButton { background-color: black; color: white;} QPushButton:pressed { background-color: #1E1E20; } """)
 
-
         right_layout.addWidget(WOL_Button, alignment=Qt.AlignTop)
-
 
         left.setStyleSheet(""" background-color: #2F2F32; border: 1px solid #3A3A3D; border-radius: 10px; """)
         right.setStyleSheet(""" background-color: #2F2F32; border: 1px solid #3A3A3D; border-radius: 10px; """)
@@ -196,33 +192,6 @@ class PCPage(QWidget):
         return match.group(0) if match else None
 
     def Background_Thread(self, PC_Activity=True):
-        def PC_Activity_Thread():
-            if PC_Activity:
-                if len(self.Backend_Computer_List) == 0:
-                    return
-                for check in self.Backend_Computer_List:
-                    if self.stop_event.is_set():
-                        break
-                    alive = self.is_Alive(check['Host'])
-                    if alive != check['Active']:
-                        check['Active'] = alive
-                        for x in range(self.Computer_list.count()):
-                            item = self.Computer_list.item(x)
-                            expected = f"{check['Host']} ({check['Username']}) | Active: {check['Active']}"
-                            if item.text().startswith(f"{check['Host']} ({check['Username']})"):
-                                item.setText(expected)
-        def Shared_Thread():
-            if self.Computer_list.count() == 0:
-                print('Error in first bit')
-                return
-            if len(self.Backend_Computer_List) == 0:
-                return
-            append_list = []
-            for x in range(len(self.Backend_Computer_List)):
-                if self.Backend_Computer_List[x]['Active'] == True:
-                    append_list.append(self.Backend_Computer_List[x])
-            self.shared_data.copy_remote(append_list)
-
         while not self.stop_event.is_set():
             for x in range(len(self.Backend_Computer_List)):
                 item = self.Backend_Computer_List[x]['Mac Address']
@@ -232,10 +201,34 @@ class PCPage(QWidget):
                         json.dump(self.Backend_Computer_List, file, indent=4)
 
             if PC_Activity:
-                threading.Thread(target=PC_Activity_Thread).start()
+                if len(self.Backend_Computer_List) == 0:
+                    if len(self.Backend_Computer_List) == 0:
+                        time.sleep(1)
+                        continue
+                for check in self.Backend_Computer_List:
+                    alive = self.is_Alive(check['Host'])
+                    if alive != check['Active']:
+                        check['Active'] = alive
+                    new_text = f"{check['Host']} ({check['Username']}) | Active: {check['Active']}"
 
-            if self.shared_data is not None:
-                threading.Thread(target=Shared_Thread).start()
+                    for i in range(self.Computer_list.count()):
+                        item = self.Computer_list.item(i)
+
+                        if item.text().startswith(f"{check['Host']} ({check['Username']})"):
+                            item.setText(new_text)
+
+            try:
+                shared_backend_info = self.shared_data.load_data('Remote PC List')
+            except:
+                shared_backend_info = None
+            if shared_backend_info is not None:
+                Hosts = []
+                for rcompare in shared_backend_info:
+                    if rcompare['Host'] not in Hosts:
+                        Hosts.append(rcompare['Host'])
+                for lcompare in self.Backend_Computer_List:
+                    if lcompare['Host'] not in Hosts:
+                        self.shared_data.add_resource('Remote PC List', lcompare)
 
             time.sleep(1)
 
@@ -259,6 +252,7 @@ class PCPage(QWidget):
                     if not Results.result() == self.Backend_Computer_List[i]['Active']:
                         self.Backend_Computer_List[i]['Active'] = Results.result()
                     self.Computer_list.addItem(f"{self.Backend_Computer_List[i]['Host']} ({self.Backend_Computer_List[i]['Username']}) | Active: {self.Backend_Computer_List[i]['Active']}")
+        self.shared_data.add_resource('Remote PC List', self.Backend_Computer_List)
 
     def on_leave(self):
         self.stop_event.set()
