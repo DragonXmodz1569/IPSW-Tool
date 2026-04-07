@@ -55,8 +55,6 @@ class Apple:
         if self.Internet_Activity == False:
             self.Console_Print("[Apple Models] Skipping Due to no Detected Wifi Connection")
             return
-        self.Console_Print("-------------------------------------------------------")
-        self.Console_Print("[Apple Models] Initiating API Models Request")
         Models_Url = self.IPSW_API + '/devices'
         All_Apple_Models = requests.get(Models_Url)
         Before_iPhone = len(self.iPhone_Models)
@@ -81,24 +79,18 @@ class Apple:
         After_iPhone = len(self.iPhone_Models)
         After_iPad = len(self.iPad_Models)
         After_Mac = len(self.Mac_Models)
-        self.Console_Print('[Apple Models] Updating Offline DataBase')
         if Before_iPhone != After_iPhone:
-            self.Console_Print('[Apple Models] Updating iPhone Models')
             with open('Modules/DataBases/iPhone_Models.json', 'w') as outfile:
                 json.dump(self.iPhone_Models, outfile, indent=4)
         if Before_iPad != After_iPad:
-            self.Console_Print('[Apple Models] Updating iPad Models')
             with open('Modules/DataBases/iPad_Models.json', 'w') as outfile:
                 json.dump(self.iPad_Models, outfile, indent=4)
         if Before_Mac != After_Mac:
-            self.Console_Print('[Apple Models] Updating Mac Models')
             with open('Modules/DataBases/Mac_Models.json', 'w') as outfile:
                 json.dump(self.Mac_Models, outfile, indent=4)
 
     def Stable_Apple_Versions(self, Grab_iPhone=True):
         if Grab_iPhone:
-            self.Console_Print("-------------------------------------------------------")
-            self.Console_Print('[Apple Models] Updating iPhone Models Versions')
             iPhone_Index = []
             for i in range(len(self.iPhone_Models)):
                 IOS_Url = self.IPSW_API + '/device/' + self.iPhone_Models[i]['identifier']
@@ -113,11 +105,30 @@ class Apple:
             with open('Modules/DataBases/iPhone_IOS.json', 'w') as outfile:
                 json.dump(iPhone_Index, outfile, indent=4)
 
-        self.Console_Print("-------------------------------------------------------")
-
+    def Reload_DataBase(self):
+        self.iPhone_IOS = []
+        self.iPhone_Models = []
+        self.iPad_Models = []
+        self.Mac_Models = []
+        if not self.Internet_Activity:
+            return self.iPhone_Models, self.iPhone_IOS
+        self.Apple_Models()
+        self.Stable_Apple_Versions()
+        if os.path.exists('Modules/DataBases'):
+            for file in os.listdir('Modules/DataBases'):
+                if file == 'iPhone_IOS.json':
+                    with open('Modules/DataBases/iPhone_IOS.json') as json_file:
+                        self.iPhone_IOS = json.load(json_file)
+                if file == 'iPhone_Models.json':
+                    with open('Modules/DataBases/iPhone_Models.json') as json_file:
+                        self.iPhone_Models = json.load(json_file)
+                if file == 'iPad_Models.json':
+                    with open('Modules/DataBases/iPad_Models.json') as json_file:
+                        self.iPad_Models = json.load(json_file)
+                if file == 'Mac_Models.json':
+                    with open('Modules/DataBases/Mac_Models.json') as json_file:
+                        self.Mac_Models = json.load(json_file)
+        return self.iPhone_Models, self.iPhone_IOS
 
     def Main_Function(self):
-        if self.Internet_Activity:
-            self.Apple_Models()
-            self.Stable_Apple_Versions()
         return self.iPhone_Models, self.iPhone_IOS

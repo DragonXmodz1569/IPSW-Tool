@@ -136,6 +136,7 @@ class PCPage(QWidget):
         if ok:
             with ThreadPoolExecutor() as executor:
                 activity = executor.submit(self.is_Alive, Host_Machine)
+                IP = executor.submit(self.Get_IP_Address, Host_Machine)
                 Mac = executor.submit(self.get_mac, Host_Machine)
                 Username, ok = QInputDialog.getText(self, "Username", "Please enter your Computer Username")
                 if ok:
@@ -145,6 +146,7 @@ class PCPage(QWidget):
                                 'Host': Host_Machine,
                                 'Username': Username,
                                 'Password': Password,
+                                'IP Address': IP.result(),
                                 'Mac Address': Mac.result(),
                                 'Active': activity.result()
                             }
@@ -179,6 +181,13 @@ class PCPage(QWidget):
 
         super().mousePressEvent(event)
 
+    def Get_IP_Address(self, Target):
+        try:
+            ip = socket.gethostbyname(Target)
+            return ip
+        except:
+            return 'Error'
+
     def is_Alive(self, target, timeout=1):
         try:
             with socket.create_connection((target, '22'), timeout):
@@ -187,9 +196,12 @@ class PCPage(QWidget):
             return False
 
     def get_mac(self, ip):
-        result = subprocess.check_output(["arp", "-n", ip]).decode()
-        match = re.search(r"([0-9a-f]{2}:){5}[0-9a-f]{2}", result.lower())
-        return match.group(0) if match else None
+        try:
+            result = subprocess.check_output(["arp", "-n", ip]).decode()
+            match = re.search(r"([0-9a-f]{2}:){5}[0-9a-f]{2}", result.lower())
+            return match.group(0) if match else None
+        except:
+            return 'Error'
 
     def Background_Thread(self, PC_Activity=True):
         while not self.stop_event.is_set():
@@ -207,8 +219,11 @@ class PCPage(QWidget):
                         continue
                 for check in self.Backend_Computer_List:
                     alive = self.is_Alive(check['Host'])
+                    ip = self.Get_IP_Address(check['Host'])
                     if alive != check['Active']:
                         check['Active'] = alive
+                    if ip != check['IP Address']:
+                        check['IP Address'] = ip
                     new_text = f"{check['Host']} ({check['Username']}) | Active: {check['Active']}"
 
                     for i in range(self.Computer_list.count()):
@@ -240,7 +255,6 @@ class PCPage(QWidget):
 
         self.worker_thread = threading.Thread(target=self.Background_Thread, daemon=True)
         self.worker_thread.start()
-        self.Console_Print("PC page worker started")
 
     def load_data(self):
         if os.path.exists("Modules/DataBases/Machines.json"):
