@@ -63,7 +63,6 @@ class iPhonePage(QWidget):
         s2_layout.addLayout(s2_button)
         s2_button.addWidget(Download_IPSW)
         s2_button.addWidget(Stage_1_Extract)
-        s2_button.addWidget(Test)
 
         section2.setLayout(s2_layout)
 
