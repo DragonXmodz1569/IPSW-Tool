@@ -116,8 +116,8 @@ class iPhonePage(QWidget):
                         seen.add(version)
                         versions.append(version)
 
-            for version in reversed(versions):
-                self.iPhone_Versions.addItem(version)
+        for version in reversed(versions):
+            self.iPhone_Versions.addItem(version)
 
     def Download_IPSW(self, version, identifer):
         self.Console_Print(f'Starting download of {version} IPSW for {identifer}')
